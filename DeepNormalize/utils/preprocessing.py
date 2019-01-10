@@ -1,5 +1,4 @@
 import numpy as np
-import multiprocessing
 
 from nilearn.image import new_img_like
 from nilearn.image import crop_img
@@ -51,10 +50,6 @@ def preprocess_images(data):
 			np.array([cropped_t1, cropped_flair, cropped_t1ce, cropped_t2, cropped_segmentation, cropped_weight_map]))
 
 	return preprocessed_images
-
-def parallel_crop(data):
-	pool = multiprocessing.Pool(processes=data.shape[1])
-	results = [pool.apply_async(preprocess_images, args=(data))]
 
 # def preprocess_images(image_files, segmentations):
 # 	images, segs = reslice_image_set(image_files, segmentations, crop=True)
