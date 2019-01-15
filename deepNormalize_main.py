@@ -290,11 +290,10 @@ def train(args, config):
 		# infinite, and we resume from where we left off in the previous `while` loop
 		# iteration.
 		for _ in range(200):
+			start_time = time.time()
 			data = sess.run(next_element, feed_dict={handle: training_handle})
-			data = preprocessing.preprocess_images(np.array(data).astype(
-				np.float32))  # where data is a (tuple) 6 modalities |- subject 0, 1, 2, 3 (subject N for batch_size = N)
-			for subject in data:
-				patches, labels, weight_maps = sampler.extract_class_balanced_samples(subject)
+			end_time = time.time()
+			print(end_time-start_time)
 		# Run one pass over the validation dataset.
 		sess.run(validation_iterator.initializer)
 		for _ in range(50):

@@ -3,6 +3,7 @@ import tensorflow as tf
 import os
 
 from DeepNormalize.utils import preprocessing
+from DeepNormalize.utils.sampler import Sampler
 
 
 class DataProvider(object):
@@ -26,6 +27,11 @@ class DataProvider(object):
 		self._height = config.get("height", 240)
 		self._depth = config.get("depth", 155)
 		self._n_channels = config.get("n_channels", 1)
+
+		self._sampler = Sampler(patch_size=config.get("patch_size"),
+								batch_size=config.get("train_batch_size"),
+								n_classes=config.get("n_classes"),
+								use_weight_map=config.get("use_weight_map"))
 
 	def get_filename(self):
 		return os.path.join(self._path, self._subset + ".tfrecords")
@@ -85,14 +91,14 @@ class DataProvider(object):
 		segmentation = features["segmentation"]
 		weight_map = features["weight_map"]
 
-		# Reshape from [depth * height * width] to [depth, height, width].
+		# Reshape from [depth * height * width] to [depth, height, width, channel].
 
 		flair = tf.reshape(flair, [self._width, self._height, self._depth, self._n_channels])
 		t1 = tf.reshape(t1, [self._width, self._height, self._depth, self._n_channels])
 		t1ce = tf.reshape(t1ce, [self._width, self._height, self._depth, self._n_channels])
 		t2 = tf.reshape(t2, [self._width, self._height, self._depth, self._n_channels])
-		segmentation = tf.reshape(segmentation, [self._width, self._height, self._depth, self._n_channels])
-		weight_map = tf.reshape(weight_map, [self._width, self._height, self._depth, self._n_channels])
+		segmentation = tf.reshape(segmentation, [self._width, self._height, self._depth])
+		weight_map = tf.reshape(weight_map, [self._width, self._height, self._depth])
 
 		if self._use_fp16:
 			flair = tf.cast(flair, dtype=tf.float16)
@@ -109,20 +115,21 @@ class DataProvider(object):
 			weight_map = tf.cast(weight_map, dtype=tf.float32)
 
 		# Reshape from [depth * height * width] to [depth, height, width].
-		segmentation = tf.cast(segmentation, dtype=tf.int32)
+		segmentation = tf.cast(segmentation, dtype=tf.uint8)
 
 		# Custom preprocessing here.
 
 		return [flair, t1, t1ce, t2, segmentation, weight_map]
 
-	def _read_py_function(self, filename, label):
+	def _read_py_function(self, flair, t1, t1ce, t2, segmentation, weight_map):
 
-		images, segs, = preprocessing.preprocess_images(filename, label)
+		flair, t1, t1ce, t2, segmentation, weight_map = preprocessing.preprocess_images(
+			[flair, t1, t1ce, t2, segmentation, weight_map])
 
-		# return nib.load(filename.decode()).get_data().astype(np.float32), nib.load(label.decode()).get_data().astype(np.int32)
+		patches, labels, weight_map = self._sampler.extract_class_balanced_samples([flair, t1, t1ce, t2, segmentation, weight_map])
 
-		print("Success")
-		return images, segs
+		print("sampler success")
+		return patches, labels, weight_map
 
 	def input(self):
 
@@ -147,7 +154,18 @@ class DataProvider(object):
 				dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
 
 			# Batch it up.
-			dataset = dataset.batch(self._batch_size, drop_remainder=True)
+			# dataset = dataset.batch(self._batch_size, drop_remainder=True)
+
+			dataset = dataset.apply(tf.data.experimental.map_and_batch(
+				map_func=lambda flair, t1, t1ce, t2, segmentation, weight_map: tf.py_func(
+					self._read_py_function, [flair, t1, t1ce, t2, segmentation, weight_map],
+					[tf.float32, tf.uint8, tf.float32]
+				), batch_size=self._batch_size, num_parallel_calls=self._batch_size, drop_remainder=True))
+			#
+			# dataset = dataset.map(map_func=lambda flair, t1, t1ce, t2, segmentation, weight_map: tf.py_func(
+			# 	self._read_py_function, [flair, t1, t1ce, t2, segmentation, weight_map],
+			# 	[tf.float32, tf.float32, tf.float32, tf.float32, tf.uint8, tf.float32]
+			# ))
 
 			dataset = dataset.prefetch(2 * self._batch_size)
 

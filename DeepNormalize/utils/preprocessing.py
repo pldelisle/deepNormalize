@@ -16,45 +16,31 @@ def preprocess_images(data):
 	:param data: The image list, each entry representing a subject.
 	"""
 
-	preprocessed_images = list()
+	# Get each modality.
+	flair = data[0]
+	t1 = data[1]
+	t1ce = data[2]
+	t2 = data[3]
+	segmentation = data[4]
+	weight_map = data[5]
 
-	for i in range(data.shape[1]):
-		# Get the subject data. current_data will contain all 6 modalities of 1 subject.
-		current_data = data[:, i]
+	# Get the T1 modality slices.
+	# Template used for each subject is the T1 modality (current_data[1])
+	t1_slices = get_slices(t1)
 
-		# Logical OR to find non-background values. True if voxel value is below or above 0.
-		# Template used for each subject is the T1 modality (current_data[1])
-		flair = current_data[0]
-		t1 = current_data[1]
-		t1ce = current_data[2]
-		t2 = current_data[3]
-		segmentation = current_data[4]
-		weight_map = current_data[5]
+	# Get the cropped modalities.
+	cropped_t1 = t1[tuple(t1_slices)]
+	cropped_flair = flair[tuple(t1_slices)]
+	cropped_t1ce = t1ce[tuple(t1_slices)]
+	cropped_t2 = t2[tuple(t1_slices)]
+	cropped_segmentation = segmentation[tuple(t1_slices)]
+	cropped_weight_map = weight_map[tuple(t1_slices)]
 
-		# Get the T1 modality slices.
-		t1_slices = get_slices(t1)
+	# Additional preprocessing here.
+	# ...
 
-		# Get the cropped modalities.
-		cropped_t1 = t1[tuple(t1_slices)]
-		cropped_flair = flair[tuple(t1_slices)]
-		cropped_t1ce = t1ce[tuple(t1_slices)]
-		cropped_t2 = t2[tuple(t1_slices)]
-		cropped_segmentation = segmentation[tuple(t1_slices)]
-		cropped_weight_map = weight_map[tuple(t1_slices)]
+	return cropped_t1, cropped_flair, cropped_t1ce, cropped_t2, cropped_segmentation, cropped_weight_map
 
-		# Additional preprocessing here.
-		# ...
-
-		# Append preprocessed images.
-		preprocessed_images.append(
-			np.array([cropped_t1, cropped_flair, cropped_t1ce, cropped_t2, cropped_segmentation, cropped_weight_map]))
-
-	return preprocessed_images
-
-# def preprocess_images(image_files, segmentations):
-# 	images, segs = reslice_image_set(image_files, segmentations, crop=True)
-#
-# 	return images, segs
 
 def get_slices(volume_data):
 	"""
