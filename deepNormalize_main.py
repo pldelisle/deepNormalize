@@ -279,11 +279,6 @@ def train(args, config):
 	training_handle = sess.run(training_iterator.string_handle())
 	validation_handle = sess.run(validation_iterator.string_handle())
 
-	sampler = Sampler(patch_size=config.get("patch_size"),
-					  batch_size=args.train_batch_size,
-					  n_classes=config.get("n_classes"),
-					  use_weight_map=config.get("use_weight_map"))
-
 	# Loop forever, alternating between training and validation.
 	while True:
 		# Run 200 steps using the training dataset. Note that the training dataset is

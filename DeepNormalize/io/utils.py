@@ -2,7 +2,6 @@ import nibabel as nib
 import re
 import os
 import numpy as np
-import collections
 from skimage.util import view_as_blocks, view_as_windows
 from DeepNormalize.utils.nilearn_utils import crop_img_to
 

@@ -1,9 +1,8 @@
-import numpy as np
 import tensorflow as tf
 import os
+import numpy as np
 
 from DeepNormalize.utils import preprocessing
-from DeepNormalize.utils.sampler import Sampler
 
 
 class DataProvider(object):
@@ -27,11 +26,9 @@ class DataProvider(object):
 		self._height = config.get("height", 240)
 		self._depth = config.get("depth", 155)
 		self._n_channels = config.get("n_channels", 1)
+		self._train_batch_size = config.get("train_batch_size", 32)
 
-		self._sampler = Sampler(patch_size=config.get("patch_size"),
-								batch_size=config.get("train_batch_size"),
-								n_classes=config.get("n_classes"),
-								use_weight_map=config.get("use_weight_map"))
+	# Declare a Sampler object here if required.
 
 	def get_filename(self):
 		return os.path.join(self._path, self._subset + ".tfrecords")
@@ -105,6 +102,7 @@ class DataProvider(object):
 			t1 = tf.cast(t1, dtype=tf.float16)
 			t1ce = tf.cast(t1ce, dtype=tf.float16)
 			t2 = tf.cast(t2, dtype=tf.float16)
+			segmentation = tf.cast(segmentation, dtype=tf.float16)
 			weight_map = tf.cast(weight_map, dtype=tf.float16)
 
 		else:
@@ -112,6 +110,7 @@ class DataProvider(object):
 			t1 = tf.cast(t1, dtype=tf.float32)
 			t1ce = tf.cast(t1ce, dtype=tf.float32)
 			t2 = tf.cast(t2, dtype=tf.float32)
+			segmentation = tf.cast(segmentation, dtype=tf.float32)
 			weight_map = tf.cast(weight_map, dtype=tf.float32)
 
 		# Reshape from [depth * height * width] to [depth, height, width].
@@ -122,14 +121,49 @@ class DataProvider(object):
 		return [flair, t1, t1ce, t2, segmentation, weight_map]
 
 	def _read_py_function(self, flair, t1, t1ce, t2, segmentation, weight_map):
+		"""
+		A function in which previously extracted Tenors are casted to plain NumPy arrays for preprocessing.
+		Preprocessing is done sequentially.
+		:param flair: FLAIR modality of an image.
+		:param t1: T1 modality of an image.
+		:param t1ce: T1ce modality of an image.
+		:param t2: T2 modality of an image.
+		:param segmentation: Labels of an image.
+		:param weight_map: Associated weight map of an image.
+		:return: An array containing preprocessed modalities.
+		"""
 
+		# Call preprocessing facade method.
 		flair, t1, t1ce, t2, segmentation, weight_map = preprocessing.preprocess_images(
 			[flair, t1, t1ce, t2, segmentation, weight_map])
 
-		patches, labels, weight_map = self._sampler.extract_class_balanced_samples([flair, t1, t1ce, t2, segmentation, weight_map])
+		# If necessary, call a sampler here.
+		# patches, labels, weight_map = self._sampler.extract_class_balanced_samples(
+		# 	[flair, t1, t1ce, t2, segmentation, weight_map])
 
-		print("sampler success")
-		return patches, labels, weight_map
+		return flair, t1, t1ce, t2, segmentation, weight_map
+
+	def crop_image(self, flair, t1, t1ce, t2, segmentation, weight_map):
+		"""
+		Crop modalities.
+	:param flair: FLAIR modality of an image.
+		:param t1: T1 modality of an image.
+		:param t1ce: T1ce modality of an image.
+		:param t2: T2 modality of an image.
+		:param segmentation: Labels of an image.
+		:param weight_map: Associated weight map of an image.
+		:return: Randomly cropped 3D patches from image's set.
+		"""
+
+		data = tf.stack([flair, t1, t1ce, t2, segmentation, weight_map], axis=-1)
+
+		# Randomly crop a [self._patch_size, self._patch_size, self._patch_size] section of the image using
+		# TensorFlow built-in function.
+		image = tf.random_crop(data, [self._patch_size, self._patch_size, self._patch_size, 3])
+
+		[flair, t1, t1ce, t2, segmentation, weight_map] = tf.unstack(image, 3, axis=-1)
+
+		return flair, t1, t1ce, t2, segmentation, weight_map
 
 	def input(self):
 
@@ -153,20 +187,33 @@ class DataProvider(object):
 				# shuffling.
 				dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
 
-			# Batch it up.
-			# dataset = dataset.batch(self._batch_size, drop_remainder=True)
+			# If using half precision float point (FP16), return type must be in tf.float16.
+			if self._use_fp16:
+				dataset = dataset.apply(tf.data.experimental.map_and_batch(
+					map_func=lambda flair, t1, t1ce, t2, segmentation, weight_map: tf.py_func(
+						self._read_py_function, [flair, t1, t1ce, t2, segmentation, weight_map],
+						[tf.float16, tf.float16, tf.float16, tf.float16, tf.float16, tf.float16]
+					), batch_size=self._batch_size, num_parallel_calls=self._batch_size, drop_remainder=True))
 
-			dataset = dataset.apply(tf.data.experimental.map_and_batch(
-				map_func=lambda flair, t1, t1ce, t2, segmentation, weight_map: tf.py_func(
-					self._read_py_function, [flair, t1, t1ce, t2, segmentation, weight_map],
-					[tf.float32, tf.uint8, tf.float32]
-				), batch_size=self._batch_size, num_parallel_calls=self._batch_size, drop_remainder=True))
-			#
+			else:  # If using single precision floating point.
+				dataset = dataset.apply(tf.data.experimental.map_and_batch(
+					map_func=lambda flair, t1, t1ce, t2, segmentation, weight_map: tf.py_func(
+						self._read_py_function, [flair, t1, t1ce, t2, segmentation, weight_map],
+						[tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32]
+					), batch_size=self._batch_size, num_parallel_calls=self._batch_size, drop_remainder=True))
+
+			if self._subset == "train":
+				dataset = dataset.map(self.crop_image, num_parallel_calls=self._batch_size)
+
 			# dataset = dataset.map(map_func=lambda flair, t1, t1ce, t2, segmentation, weight_map: tf.py_func(
 			# 	self._read_py_function, [flair, t1, t1ce, t2, segmentation, weight_map],
 			# 	[tf.float32, tf.float32, tf.float32, tf.float32, tf.uint8, tf.float32]
 			# ))
 
+			# Batch it up
+			dataset = dataset.batch(self._train_batch_size)
+
+			# Prepare for next iterations.
 			dataset = dataset.prefetch(2 * self._batch_size)
 
 			return dataset

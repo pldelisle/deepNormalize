@@ -1,9 +1,5 @@
 import numpy as np
 
-from nilearn.image import new_img_like
-from nilearn.image import crop_img
-from DeepNormalize.io.utils import read_image, read_image_files
-
 TOLERANCE = 1e-5
 BACKGROUND_VALUE = 0
 
@@ -36,7 +32,7 @@ def preprocess_images(data):
 	cropped_segmentation = segmentation[tuple(t1_slices)]
 	cropped_weight_map = weight_map[tuple(t1_slices)]
 
-	# Additional preprocessing here.
+	# Additional preprocessing in pure Python/NumPy here.
 	# ...
 
 	return cropped_t1, cropped_flair, cropped_t1ce, cropped_t2, cropped_segmentation, cropped_weight_map
@@ -66,39 +62,3 @@ def get_slices(volume_data):
 	slices = [slice(s, e) for s, e in zip(start, end)]
 
 	return slices
-
-
-def reslice_image_set(set_of_files, segmentations, crop=True):
-	if crop:
-		crop_slices = get_cropping_parameters(set_of_files)
-	else:
-		crop_slices = None
-
-	images = read_image_files(set_of_files, crop=crop_slices)
-	segs = read_image_files(segmentations, crop=crop_slices)
-
-	return images, segs
-
-
-def get_cropping_parameters(in_files):
-	foreground = get_complete_foreground(in_files)
-	return crop_img(foreground, return_slices=True, copy=True)
-
-
-def get_complete_foreground(training_data_files):
-	subject_foreground = get_foreground_from_set_of_files(training_data_files)
-
-	return new_img_like(read_image(training_data_files[0]), subject_foreground)
-
-
-def get_foreground_from_set_of_files(set_of_files, background_value=0, tolerance=0.00001):
-	for i, image_file in enumerate(set_of_files):
-		image = read_image(image_file)
-		is_foreground = np.logical_or(image.get_data() < (background_value - tolerance),
-									  image.get_data() > (background_value + tolerance))
-		if i == 0:
-			foreground = np.zeros(is_foreground.shape, dtype=np.uint8)
-
-		foreground[is_foreground] = 1
-
-	return foreground

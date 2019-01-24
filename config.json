@@ -3,7 +3,7 @@
   "augment": "False",
   "use_fp16": "False",
   "use_weight_map": "True",
-  "batch_size": 4,
+  "batch_size": 1,
   "train_batch_size": 32,
   "n_classes": 4,
   "patch_size": [64, 64, 64],
