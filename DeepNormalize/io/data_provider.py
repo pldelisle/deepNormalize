@@ -122,7 +122,7 @@ class DataProvider(object):
 
 	def _read_py_function(self, flair, t1, t1ce, t2, segmentation, weight_map):
 		"""
-		A function in which previously extracted Tenors are casted to plain NumPy arrays for preprocessing.
+		A function in which previously extracted Tensors are casted to plain NumPy arrays for preprocessing.
 		Preprocessing is done sequentially.
 		:param flair: FLAIR modality of an image.
 		:param t1: T1 modality of an image.

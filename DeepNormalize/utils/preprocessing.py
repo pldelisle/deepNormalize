@@ -1,64 +1,89 @@
 import numpy as np
+from sklearn.feature_extraction.image import extract_patches
 
 TOLERANCE = 1e-5
 BACKGROUND_VALUE = 0
 
 
-def preprocess_images(data):
-	"""
-	Preprocess a list of images. Each first-layer list represents a modality, while
-	each modality contains a list of "batch_size" images, each belonging to a subject.
-	Modalities in order: FLAIR, T1, T1ce, T2, Segmentation, Weight Map.
-	:param data: The image list, each entry representing a subject.
-	"""
+def preprocess_images(subject_modalities):
+    """
+    Preprocess a list of images. Each first-layer list represents a modality, while
+    each modality contains a list of "batch_size" images, each belonging to a subject.
+    Modalities in order: FLAIR, T1, T1ce, T2, Segmentation, Weight Map.
+    :param subject_modalities: A dictionary containing image modalities of one subject.
+    :return: An dictionary containing preprocessed image modalities and slice template.
+    """
 
-	# Get each modality.
-	flair = data[0]
-	t1 = data[1]
-	t1ce = data[2]
-	t2 = data[3]
-	segmentation = data[4]
-	weight_map = data[5]
+    modalities, slices = crop(subject_modalities)
 
-	# Get the T1 modality slices.
-	# Template used for each subject is the T1 modality (current_data[1])
-	t1_slices = get_slices(t1)
+    # Additional preprocessing in pure Python/NumPy here.
+    # ...
 
-	# Get the cropped modalities.
-	cropped_t1 = t1[tuple(t1_slices)]
-	cropped_flair = flair[tuple(t1_slices)]
-	cropped_t1ce = t1ce[tuple(t1_slices)]
-	cropped_t2 = t2[tuple(t1_slices)]
-	cropped_segmentation = segmentation[tuple(t1_slices)]
-	cropped_weight_map = weight_map[tuple(t1_slices)]
+    return modalities, slices
 
-	# Additional preprocessing in pure Python/NumPy here.
-	# ...
 
-	return cropped_t1, cropped_flair, cropped_t1ce, cropped_t2, cropped_segmentation, cropped_weight_map
+def crop(subject_modalities):
+    """
+    Crop a set of image modalities.
+    :param subject_modalities:  A dictionary containing image modalities of one subject.
+    :return: A dictionary containing the cropped images and slice template.
+    """
+    # Get the T1 modality slices which is in position 1.
+    t1 = subject_modalities["t1"]
+
+    # Template used for each subject is the T1 modality.
+    t1_slices = get_slices(t1)
+
+    # Create a new dictionary for storing crop result.
+    modalities = dict()
+
+    for key, value in subject_modalities.items():
+        cropped_modality = value[tuple(t1_slices)]
+        modalities[key] = cropped_modality
+
+    return modalities, t1_slices
 
 
 def get_slices(volume_data):
-	"""
-	Return a set of slices to crop.
-	:param volume_data: a Numpy array containing voxel values.
-	:return: cropped_data : a Numpy array containing slices that defines the range of the crop.
-	E.g. [slice(20, 200), slice(40, 150), slice(0, 100)] defines a 3D cube
-	"""
-	# Logical OR to find non-background values. True if voxel value is below or above 0.
-	idx = np.logical_or(volume_data < (BACKGROUND_VALUE - TOLERANCE),
-						volume_data > (BACKGROUND_VALUE + TOLERANCE))
+    """
+    Return a set of slices to crop.
+    :param volume_data: a Numpy array containing voxel values.
+    :return: cropped_data : a Numpy array containing slices that defines the range of the crop.
+    E.g. [slice(20, 200), slice(40, 150), slice(0, 100)] defines a 3D cube
+    """
+    # Logical OR to find non-background values. True if voxel value is below or above 0.
+    idx = np.logical_or(volume_data < (BACKGROUND_VALUE - TOLERANCE),
+                        volume_data > (BACKGROUND_VALUE + TOLERANCE))
 
-	passes_threshold = np.any(idx, axis=-1)
-	coords = np.array(np.where(passes_threshold))
-	start = coords.min(axis=1)
-	end = coords.max(axis=1) + 1
+    passes_threshold = np.any(idx, axis=-1)
+    coords = np.array(np.where(passes_threshold))
+    start = coords.min(axis=1)
+    end = coords.max(axis=1) + 1
 
-	# Pad with one voxel to avoid resampling problems.
-	start = np.maximum(start - 1, 0)
-	end = np.minimum(end + 1, volume_data.shape[:3])
+    # Pad with one voxel to avoid resampling problems.
+    start = np.maximum(start - 1, 0)
+    end = np.minimum(end + 1, volume_data.shape[:3])
 
-	# Create slices of the volume.
-	slices = [slice(s, e) for s, e in zip(start, end)]
+    # Create slices of the volume.
+    slices = [slice(s, e, 1) for s, e in zip(start, end)]
 
-	return slices
+    return slices
+
+
+def get_patches(subject_modalities, patch_shape, extraction_step):
+    """
+    Get a list of patches for each modality.
+    :param subject_modalities: A dictionary containing image modalities of one subject.
+    :param patch_shape: A 4-D Python list containing Height, Width, Depth size of patches ( [H, W, D, 1] ).
+    :param extraction_step: integer or tuple of length arr.ndim. Indicates step size at which extraction shall
+                            be performed. If integer is given, then the step is uniform in all dimensions.
+    :return: A dictionary containing a patch list for each image modality.
+    """
+    modalities = dict()
+
+    for key, value in subject_modalities.items():
+        patches = extract_patches(arr=value, patch_shape=patch_shape, extraction_step=extraction_step)
+        patches = patches.reshape([-1] + list(patch_shape))
+        modalities[key] = patches
+
+    return modalities
