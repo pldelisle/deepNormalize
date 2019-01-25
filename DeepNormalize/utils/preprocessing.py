@@ -5,7 +5,7 @@ TOLERANCE = 1e-5
 BACKGROUND_VALUE = 0
 
 
-def preprocess_images(subject_modalities):
+def preprocess_images(subject_modalities, apply):
     """
     Preprocess a list of images. Each first-layer list represents a modality, while
     each modality contains a list of "batch_size" images, each belonging to a subject.
@@ -14,15 +14,19 @@ def preprocess_images(subject_modalities):
     :return: An dictionary containing preprocessed image modalities and slice template.
     """
 
-    modalities, slices = crop(subject_modalities)
+    if apply:
+        slices, modalities = crop(subject_modalities, apply)
+        return slices, modalities
 
-    # Additional preprocessing in pure Python/NumPy here.
-    # ...
+        # Additional preprocessing in pure Python/NumPy here.
+        # ...
 
-    return modalities, slices
+    else:
+        slices = crop(subject_modalities, apply)
+        return slices
 
 
-def crop(subject_modalities):
+def crop(subject_modalities, apply):
     """
     Crop a set of image modalities.
     :param subject_modalities:  A dictionary containing image modalities of one subject.
@@ -34,14 +38,18 @@ def crop(subject_modalities):
     # Template used for each subject is the T1 modality.
     t1_slices = get_slices(t1)
 
-    # Create a new dictionary for storing crop result.
-    modalities = dict()
+    if apply:
+        # Create a new dictionary for storing crop result.
+        modalities = dict()
 
-    for key, value in subject_modalities.items():
-        cropped_modality = value[tuple(t1_slices)]
-        modalities[key] = cropped_modality
+        for key, value in subject_modalities.items():
+            cropped_modality = value[tuple(t1_slices)]
+            modalities[key] = cropped_modality
 
-    return modalities, t1_slices
+        return t1_slices, modalities
+
+    else:
+        return t1_slices
 
 
 def get_slices(volume_data):

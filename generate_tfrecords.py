@@ -113,19 +113,19 @@ def write_training_examples(X, y, filename):
     :return:
     """
 
-    for i in range(len(X)):  # For all subjects.
+    writer = tf.python_io.TFRecordWriter(filename)
 
-        writer = tf.python_io.TFRecordWriter(filename)
+    for i in range(len(X)):  # For all subjects.
 
         print("Processing subject " + str(i + 1) + " of " + str(len(X)))
 
         modalities = dict()
         modalities_name = ["flair", "t1", "t1ce", "t2"]
 
-        for j, modality_name in zip(range(len(X[i])), modalities_name):  # For all subject's modalities.
+        for j, modality_name in zip(range(len(X[i])), modalities_name):  # For all subject's modalities, read file.
             # Loads the image.
             modality = nib.load(X[i][j]).get_data().astype(np.int64)
-            # Expand one dimension. Will now get [H, W, D, 1] shape.
+            # Expand one dimension. Will now get [H, W, D, 1] shape for current modality.
             modality = np.expand_dims(modality, axis=-1)
             # Append the current modality to a dictionary of modalities.
             modalities[modality_name] = modality
@@ -151,12 +151,16 @@ def write_training_examples(X, y, filename):
         # Append weight map to modality list.
         modalities["weight_map"] = weight_map
 
-        # Apply preprocessing.
-        modalities, slices = preprocess_images(modalities)
+        # Get slices from preprocessing without applying crop.
+        slices = preprocess_images(modalities, apply=False)
 
         # Get original and modified image shape.
-        original_shape = seg.shape
-        cropped_shape = modalities["t1"].shape
+        original_shape = [seg.shape[0], seg.shape[1], seg.shape[2], seg.shape[3]]
+
+        # [X_start, X_step, X_stop, Y_start, Y_step, Y_stop, Z_start, Z_step, Z_stop]
+        tf_slices = [slices[0].start, slices[0].step, slices[0].stop,
+                     slices[1].start, slices[1].step, slices[1].stop,
+                     slices[2].start, slices[2].step, slices[2].stop]
 
         # Construct a TFRecord feature.
         feature = {
@@ -167,7 +171,7 @@ def write_training_examples(X, y, filename):
             "segmentation": _int_feature(modalities["segmentation"].ravel()),
             "weight_map": _float_feature(modalities["weight_map"].ravel()),
             "original_shape": _int_feature(original_shape),
-            "cropped_shape": _int_feature(cropped_shape)
+            "slices": _int_feature(tf_slices)
         }
 
         # Construct a TFRecord example.
@@ -202,7 +206,7 @@ def write_testing_examples(X, y, output_dir, patch_shape, extraction_step):
 
         print("Processing subject " + str(i + 1) + " of " + str(len(X)) + " with file name " + output_dir + test_file)
 
-        writer = tf.python_io.TFRecordWriter(output_dir+test_file)
+        writer = tf.python_io.TFRecordWriter(output_dir + test_file)
 
         modalities = dict()
         modalities_name = ["flair", "t1", "t1ce", "t2"]
@@ -225,14 +229,14 @@ def write_testing_examples(X, y, output_dir, patch_shape, extraction_step):
         modalities["segmentation"] = seg
 
         # Apply preprocessing.
-        modalities, slices = preprocess_images(modalities)
+        slices, modalities = preprocess_images(modalities, apply=True)
 
         # Get patches for all modalities. Give a [N_patches, patch_shape, patch_shape, patch_shape, 1] list for each
         # modality.
         modalities = get_patches(modalities, patch_shape=patch_shape, extraction_step=extraction_step)
 
         for k in range(0, modalities["t1"].shape[0]):  # Take the first modality for counting number of patches.
-            # For each patch, create a feature.
+            # For each patch, create a feature containing all modalities.
             feature = {
                 "flair": _int_feature(modalities["flair"][k].ravel()),
                 "t1": _int_feature(modalities["t1"][k].ravel()),
