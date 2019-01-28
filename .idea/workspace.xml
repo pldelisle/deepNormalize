@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="903c3ab5-80b1-4607-89ca-982587e3f379" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/DeepNormalize/io/data_provider.py" beforeDir="false" afterPath="$PROJECT_DIR$/DeepNormalize/io/data_provider.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -14,17 +12,17 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/deepNormalizev3$generate_lite_tfrecords.coverage" NAME="generate_tfrecords Coverage Results" MODIFIED="1548438075311" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/deepNormalizev3$Main.coverage" NAME="Main Coverage Results" MODIFIED="1548701109618" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="/home/pierre-luc-delisle/Documents/deepNormalizeV3/" />
+    <SUITE FILE_PATH="coverage/deepNormalizev3$Main.coverage" NAME="Main Coverage Results" MODIFIED="1548701513030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="/home/pierre-luc-delisle/Documents/deepNormalizeV3/" />
     <SUITE FILE_PATH="coverage/deepNormalizev3$Unnamed.coverage" NAME="Unnamed Coverage Results" MODIFIED="1544243767155" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="/home/pierre-luc-delisle/Documents/deepNormalizeV3/" />
     <SUITE FILE_PATH="coverage/deepNormalizev3$test.coverage" NAME="test Coverage Results" MODIFIED="1548363761412" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DeepNormalize/io/data_provider.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="214">
-              <caret line="123" column="82" lean-forward="true" selection-start-line="123" selection-start-column="82" selection-end-line="123" selection-end-column="82" />
+            <state relative-caret-position="15">
+              <caret line="1" column="9" selection-start-line="1" selection-start-column="9" selection-end-line="1" selection-end-column="9" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
               </folding>
@@ -44,30 +42,15 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/deepNormalize_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="358">
+            <state relative-caret-position="-544">
               <caret line="33" lean-forward="true" selection-start-line="33" selection-end-line="33" />
               <folding>
                 <element signature="e#1238#1278#0" />
                 <marker date="1548701270849" expanded="true" signature="10371:10372" ph="..." />
                 <marker date="1548701270849" expanded="true" signature="10398:12619" ph="..." />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/generate_tfrecords.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="698">
-              <caret line="122" column="55" lean-forward="true" selection-start-line="122" selection-start-column="55" selection-end-line="122" selection-end-column="55" />
-              <folding>
-                <element signature="e#0#18#0" expanded="true" />
-                <element signature="e#709#1511#0" />
-                <element signature="e#1544#1890#0" />
-                <element signature="e#1937#3091#0" />
               </folding>
             </state>
           </provider>
@@ -125,8 +108,8 @@
         <option value="$PROJECT_DIR$/DeepNormalize/utils/preprocessing.py" />
         <option value="$PROJECT_DIR$/generate_tfrecords.py" />
         <option value="$PROJECT_DIR$/config.json" />
-        <option value="$PROJECT_DIR$/DeepNormalize/io/data_provider.py" />
         <option value="$PROJECT_DIR$/deepNormalize_main.py" />
+        <option value="$PROJECT_DIR$/DeepNormalize/io/data_provider.py" />
       </list>
     </option>
   </component>
@@ -305,24 +288,24 @@
       <workItem from="1547584482453" duration="1157000" />
       <workItem from="1547670494361" duration="30000" />
       <workItem from="1548171955294" duration="56873000" />
-      <workItem from="1548690096316" duration="6136000" />
+      <workItem from="1548690096316" duration="6371000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="147544000" />
+    <option name="totallyTimeSpent" value="147779000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1440" height="900" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2081545" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2081545" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32891566" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.25421688" />
-      <window_info anchor="bottom" id="Debug" order="3" visible="true" weight="0.42048192" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.25421688" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.42048192" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -562,9 +545,19 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/config.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="210">
+          <caret line="14" column="20" selection-start-line="14" selection-start-column="20" selection-end-line="14" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DeepNormalize/layers/layer_util.py">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
     <entry file="file://$PROJECT_DIR$/generate_tfrecords.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="698">
+        <state relative-caret-position="-3333">
           <caret line="122" column="55" lean-forward="true" selection-start-line="122" selection-start-column="55" selection-end-line="122" selection-end-column="55" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
@@ -575,31 +568,24 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/config.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="210">
-          <caret line="14" column="20" selection-start-line="14" selection-start-column="20" selection-end-line="14" selection-end-column="20" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DeepNormalize/io/data_provider.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="214">
-          <caret line="123" column="82" lean-forward="true" selection-start-line="123" selection-start-column="82" selection-end-line="123" selection-end-column="82" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/deepNormalize_main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="358">
+        <state relative-caret-position="-544">
           <caret line="33" lean-forward="true" selection-start-line="33" selection-end-line="33" />
           <folding>
             <element signature="e#1238#1278#0" />
             <marker date="1548701270849" expanded="true" signature="10371:10372" ph="..." />
             <marker date="1548701270849" expanded="true" signature="10398:12619" ph="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DeepNormalize/io/data_provider.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="15">
+          <caret line="1" column="9" selection-start-line="1" selection-start-column="9" selection-end-line="1" selection-end-column="9" />
+          <folding>
+            <element signature="e#0#23#0" expanded="true" />
           </folding>
         </state>
       </provider>
