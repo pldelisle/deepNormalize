@@ -18,22 +18,31 @@ class DataProvider(object):
         self._batch_size = config.get("batch_size", 1)
         self._shuffle = config.get("shuffle", True)
         self._augment = config.get("augment", False)
-        self._use_fp16 = config.get("fp16", False)
-        self._patch_shape = config.get("patch_shape", 32)
+        self._use_fp16 = config.get("use_fp16", False)
+        self._patch_shape = config.get("volume")["patch_size"]
         self._width = config.get("width", 240)
         self._height = config.get("height", 240)
         self._depth = config.get("depth", 155)
         self._n_channels = config.get("n_channels", 1)
         self._train_batch_size = config.get("train_batch_size", 32)
         self._n_modalities = config.get("n_modalities", 4)
+        self._use_weight_map = config.get("use_weight_map", True)
 
-    # Declare a Sampler object here if required.
+        if self._use_weight_map:
+            self._n_total_modalities = self._n_modalities + 2
+        else:
+            self._n_total_modalities = self._n_modalities + 1
+
+        # Declare a Sampler object here if required.
 
     def get_filename(self):
         return os.path.join(self._path, self._subset + ".tfrecords")
 
     def _training_parser(self, serialized_example):
-        """Parses a single tf.Example which contains multiple modalities and label tensors."""
+        """Parses a single tf.Example which contains multiple modalities and label tensors.
+        :param serialized_example: A TFRecord serialized example.
+        :return: A tuple containing all parsed image modalities, segmentation and weight_map with slice dimensions.
+        """
 
         # input format.
         features = tf.parse_single_example(
@@ -67,7 +76,7 @@ class DataProvider(object):
         original_shape = features["original_shape"]
         slices = features["slices"]
 
-        # Reshape from [depth * height * width] to [depth, height, width, channel].
+        # Reshape from [depth * height * width] to [depth, height, width, channel] using serialized image shape.
         flair = tf.reshape(flair, original_shape)
         t1 = tf.reshape(t1, original_shape)
         t1ce = tf.reshape(t1ce, original_shape)
@@ -98,32 +107,7 @@ class DataProvider(object):
             segmentation = tf.cast(segmentation, dtype=tf.float32)
             weight_map = tf.cast(weight_map, dtype=tf.float32)
 
-        # Custom preprocessing here.
-
         return flair, t1, t1ce, t2, segmentation, weight_map, slices
-
-    # def _read_py_function(self, flair, t1, t1ce, t2, segmentation, weight_map):
-    #     """
-    #     A function in which previously extracted Tensors are casted to plain NumPy arrays for preprocessing.
-    #     Preprocessing is done sequentially.
-    #     :param flair: FLAIR modality of an image.
-    #     :param t1: T1 modality of an image.
-    #     :param t1ce: T1ce modality of an image.
-    #     :param t2: T2 modality of an image.
-    #     :param segmentation: Labels of an image.
-    #     :param weight_map: Associated weight map of an image.
-    #     :return: An array containing preprocessed modalities.
-    #     """
-    #
-    #     # Call preprocessing facade method.
-    #     flair, t1, t1ce, t2, segmentation, weight_map = preprocessing.preprocess_images(
-    #         [flair, t1, t1ce, t2, segmentation, weight_map])
-    #
-    #     # If necessary, call a sampler here.
-    #     # patches, labels, weight_map = self._sampler.extract_class_balanced_samples(
-    #     # 	[flair, t1, t1ce, t2, segmentation, weight_map])
-    #
-    #     return flair, t1, t1ce, t2, segmentation, weight_map
 
     def crop_image(self, flair, t1, t1ce, t2, segmentation, weight_map, slices):
         """
@@ -139,18 +123,22 @@ class DataProvider(object):
 
         stack = tf.stack([flair, t1, t1ce, t2, segmentation, weight_map], axis=-1)
 
-        stack = stack[slices[0]:slices[2], slices[3]:slices[5], slices[6]:slices[8], :]
+        stack = stack[slices[0]:slices[2]:slices[1], slices[3]:slices[5]:slices[4], slices[6]:slices[8]:slices[7], :, :]
 
         # Randomly crop a [self._patch_size, self._patch_size, self._patch_size, 1] section of the image using
         # TensorFlow built-in function.
         image = tf.random_crop(stack, [self._patch_shape, self._patch_shape, self._patch_shape, self._n_channels,
-                                       self._n_modalities])
+                                       self._n_total_modalities])
 
-        [flair, t1, t1ce, t2, segmentation, weight_map] = tf.unstack(image, self._n_modalities, axis=-1)
+        [flair, t1, t1ce, t2, segmentation, weight_map] = tf.unstack(image, self._n_total_modalities, axis=-1)
 
         return flair, t1, t1ce, t2, tf.cast(segmentation, tf.uint8), weight_map
 
     def input(self):
+        """
+        Return a TensorFlow data set object containing inputs.
+        :return:
+        """
 
         filename = self.get_filename()
 
@@ -158,7 +146,7 @@ class DataProvider(object):
             # Instantiate a new data set based on a provided TFRecord file name.
             dataset = tf.data.TFRecordDataset(filename)
 
-            # Parse records.
+            # Parse records. Returns 1 volume with all its modalities.
             dataset = dataset.map(map_func=self._training_parser,
                                   num_parallel_calls=min(self._batch_size, os.cpu_count()))
 
@@ -166,6 +154,7 @@ class DataProvider(object):
             if self._subset == "train" or "validation":
                 min_queue_examples = int(
                     DataProvider.num_examples_per_epoch(self._subset) * 0.10)
+
                 # Ensure that the capacity is sufficiently large to provide good random
                 # shuffling.
                 dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
@@ -174,7 +163,7 @@ class DataProvider(object):
 
                 dataset = dataset.map(self.crop_image, num_parallel_calls=self._batch_size)
 
-            # Batch it up
+            # Batch 3D patches.
             dataset = dataset.batch(int(self._train_batch_size / self._n_modalities))
 
             # Prepare for next iterations.

@@ -1,19 +1,18 @@
 {
   "shuffle": 1,
   "augment": "False",
-  "use_fp16": "False",
+  "use_fp16": "True",
   "use_weight_map": "True",
-  "batch_size": 4,
+  "batch_size": 1,
   "train_batch_size": 32,
   "n_classes": 4,
-  "n_modalities": 6,
-  "patch_shape": 32,
+  "n_modalities": 4,
   "volume": {
     "width": 240,
     "height": 240,
     "depth": 155,
     "n_channels": 1,
-    "patch_size": 32
+    "patch_size": 64
   },
   "model": {
     "batch_norm_decay": 0.997,
