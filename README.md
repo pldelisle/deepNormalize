@@ -32,7 +32,7 @@ List of arguments of this script :
 * --data-format: choices=['channel_first', 'channel_last'] If not set, the data format best for the training device is used. 
       Allowed values: channels_first (NCHW) for GPU usage, channels_last (NHWC) for CPU usage.
 
-*- -log-device-placement: Boolean. Whether to log device placement.
+* --log-device-placement: Boolean. Whether to log device placement.
 
 
 ## Contributing
