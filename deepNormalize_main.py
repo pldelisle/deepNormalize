@@ -105,7 +105,7 @@ if __name__ == '__main__':
         '--variable-strategy',
         choices=['CPU', 'GPU'],
         type=str,
-        default='GPU',
+        default='CPU',
         help='Where to locate variable operations')
     parser.add_argument(
         '--num-gpus',

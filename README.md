@@ -14,9 +14,11 @@ List of arguments to script :
 	
 * --job-dir: String. The directory where the model will be stored.
 
-* --variable-strategy: choices=['CPU', 'GPU'];  Where to locate variable operations. Default to GPU.
+* --variable-strategy: choices=['CPU', 'GPU'];  Where to locate variable operations. Default to CPU.
 		
-* --num-gpus: Integer. The number of gpus used. Uses only CPU if set to 0.
+* --num-gpus: Integer. The number of GPUs used. Uses only CPU if set to 0.
+
+* --gpu-id: String. The GPU IDs on which to run the training.
 
 * --sync: Boolean. If present when running in a distributed environment will run on sync mode.
 
