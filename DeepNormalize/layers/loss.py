@@ -1,5 +1,25 @@
+# -*- coding: utf-8 -*-
+# Copyright 2019 Pierre-Luc Delisle. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+"""
+Different loss functions for a segmentation neural network.
+
+"""
+
 import tensorflow as tf
-from tensorflow.python.keras import backend as K
 
 
 def labels_to_one_hot(ground_truth, num_classes=1):
@@ -109,20 +129,39 @@ def generalised_dice_loss(prediction,
     return 1 - generalised_dice_score
 
 
-# def dice_coefficient(prediction, ground_truth, smooth=1.0):
-#     y_true_f = tf.layers.flatten(ground_truth)
-#     y_pred_f = tf.layers.flatten(prediction)
-#     intersection = tf.reduce_sum(y_true_f * y_pred_f)
-#     return (2. * intersection + smooth) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + smooth)
-#
-#
-# def dice_coefficient_loss(prediction, ground_truth):
-#     return -dice_coefficient(prediction, ground_truth)
+def dice_coefficient(prediction, ground_truth, smooth=1.0):
+    """
+    Function to calculate the dice coefficient.
+    :param prediction: the logits (before softmax)
+    :param ground_truth: the segmentation ground truth
+    :param smooth: Smoothing coefficient.
+    :return: the dice coefficient.
+    """
+
+    y_true_f = tf.layers.flatten(ground_truth)
+    y_pred_f = tf.layers.flatten(prediction)
+    intersection = tf.reduce_sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + smooth)
+
+
+def dice_coefficient_loss(prediction, ground_truth):
+    """
+     Function to calculate the dice loss.
+     :param prediction: the logits (before softmax)
+     :param ground_truth: the segmentation ground truth
+     :return: the dice loss.
+     """
+    return -dice_coefficient(prediction, ground_truth)
+
 
 def weighted_cross_entropy(prediction, ground_truth, weight_map=None):
-    # if len(ground_truth.shape) == len(prediction.shape):
-    #     ground_truth = ground_truth[..., -1]
-
+    """
+    Function to calculate the weighted cross-entropy loss.
+    :param prediction: the logits (before softmax)
+    :param ground_truth: the segmentation ground truth
+    :param weight_map: A list of weights for each classes.
+    :return: the dice loss.
+    """
     entropy = tf.nn.weighted_cross_entropy_with_logits(
         logits=prediction, targets=ground_truth, pos_weight=weight_map)
 
@@ -134,7 +173,7 @@ def cross_entropy(prediction, ground_truth, weight_map=None):
     Function to calculate the cross-entropy loss function
     :param prediction: the logits (before softmax)
     :param ground_truth: the segmentation ground truth
-    :param weight_map:
+    :param weight_map: A 3D weight map of shape "predictions".
     :return: the cross-entropy loss
     """
     # if len(ground_truth.shape) == len(prediction.shape):

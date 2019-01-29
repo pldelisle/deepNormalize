@@ -1,3 +1,24 @@
+# -*- coding: utf-8 -*-
+# Copyright 2019 Pierre-Luc Delisle. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+"""
+Utility function for preprocessing medical images.
+
+"""
+
 import numpy as np
 from sklearn.feature_extraction.image import extract_patches
 
@@ -85,13 +106,16 @@ def get_patches(subject_modalities, patch_shape, extraction_step):
     :param patch_shape: A 4-D Python list containing Height, Width, Depth size of patches ( [H, W, D, 1] ).
     :param extraction_step: integer or tuple of length arr.ndim. Indicates step size at which extraction shall
                             be performed. If integer is given, then the step is uniform in all dimensions.
-    :return: A dictionary containing a patch list for each image modality.
+    :return: A dictionary containing a list of patches for each image modality.
     """
     modalities = dict()
 
     for key, value in subject_modalities.items():
+        # Use Scikit-Learn's method for extracting patches.
         patches = extract_patches(arr=value, patch_shape=patch_shape, extraction_step=extraction_step)
+        # Reshape in a list of patches.
         patches = patches.reshape([-1] + list(patch_shape))
+        # Assign modality of its list of patches.
         modalities[key] = patches
 
     return modalities

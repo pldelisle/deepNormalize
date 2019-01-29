@@ -36,8 +36,6 @@ import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from DeepNormalize.io.data_provider import DataProvider
-from DeepNormalize.utils import preprocessing
-from DeepNormalize.utils.sampler import Sampler
 
 # def tower_loss(scope, images, labels):
 #     """Calculate the total loss on a single tower running the DeepNormalize model.

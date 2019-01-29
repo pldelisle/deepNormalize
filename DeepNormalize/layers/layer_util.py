@@ -1,4 +1,19 @@
 # -*- coding: utf-8 -*-
+# Copyright 2019 Pierre-Luc Delisle. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 from __future__ import absolute_import, print_function
 
 import numpy as np
@@ -6,7 +21,7 @@ import numpy as np
 
 def check_spatial_dims(input_tensor, criteria):
     """
-    valid each of the spatial dims against `criteria`
+    Valid each of the spatial dims against `criteria`
     criteria can be a lambda function
     e.g. lambda x : x > 10 checks whether each dim is greater than 10
     """
@@ -32,8 +47,8 @@ def infer_spatial_rank(input_tensor):
     """
     input_shape = input_tensor.shape
     input_shape.with_rank_at_least(3)
-    #dims = input_tensor.get_shape().ndims - 2
-    #assert dims > 0, "input tensor should have at least one spatial dim, " \
+    # dims = input_tensor.get_shape().ndims - 2
+    # assert dims > 0, "input tensor should have at least one spatial dim, " \
     #                 "in addition to batch and channel dims"
     return int(input_shape.ndims - 2)
 
@@ -88,19 +103,6 @@ def expand_spatial_params(input_param, spatial_rank, param_type=int):
     assert len(input_param) >= spatial_rank, \
         'param length should be at least have the length of spatial rank'
     return tuple(input_param[:spatial_rank])
-
-# class RequireKeywords(object):
-#    def __init__(self, *list_of_keys):
-#        self.keys = list_of_keys
-#
-#    def __call__(self, f):
-#        def wrapped(*args, **kwargs):
-#            for key in self.keys:
-#                if key not in kwargs:
-#                    raise ValueError("{}: specify keywords: '{}'".format(
-#                        args[0].layer_scope().name, self.keys))
-#            return f(*args, **kwargs)
-#        return wrapped
 
 
 def check_divisible_channels(input_tensor, n_channel_splits):

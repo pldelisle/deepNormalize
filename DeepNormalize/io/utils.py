@@ -1,43 +1,29 @@
+# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
+# Copyright 2019 Pierre-Luc Delisle. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+"""
+Simple utility functions.
+
+"""
+
 import nibabel as nib
 import re
 import os
 import numpy as np
-from skimage.util import view_as_blocks, view_as_windows
-from DeepNormalize.utils.nilearn_utils import crop_img_to
-
-
-def fix_shape(image):
-    if image.shape[-1] == 1:
-        return image.__class__(dataobj=np.squeeze(image.get_data()), affine=image.affine)
-    return image
-
-
-def read_image_files(image_files, crop=None):
-    image_list = list()
-    for index, image_file in enumerate(image_files):
-        image_list.append(read_image(image_file, crop=crop))
-
-    return image_list
-
-
-def read_image(in_file, crop=None):
-    print("Reading: {0}".format(in_file))
-    image = nib.load(os.path.abspath(in_file.decode()))
-    # image = nib.load(in_file)
-    image = fix_shape(image)
-    if crop:
-        image = crop_img_to(image, crop, copy=True)
-    return image
-
-
-def extract_patches(image, window_shape=(40, 40, 40), step=10):
-    patch_image = view_as_windows(image, window_shape=window_shape, step=step)
-    return patch_image
-
-
-def extract_blocks(image, block_shape=(40, 40, 40)):
-    block_image = view_as_blocks(image, block_shape=block_shape)
-    return block_image
 
 
 def pad_image_and_center(image):

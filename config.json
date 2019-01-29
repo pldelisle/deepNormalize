@@ -1,6 +1,5 @@
 {
   "shuffle": 1,
-  "augment": "False",
   "use_fp16": "True",
   "use_weight_map": "True",
   "batch_size": 1,

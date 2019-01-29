@@ -1,3 +1,24 @@
+# -*- coding: utf-8 -*-
+# Copyright 2019 Pierre-Luc Delisle. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+"""
+Generate TFRecords files for medical images.
+
+"""
+
 import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -19,38 +40,6 @@ def _float_feature(value):
 
 def _int_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
-
-
-def prepare_testing_phase2(cutted_image, patch_size, overlap_stepsize):
-    """
-    Determine patches for testing phase.
-    :param cutted_image:
-    :param patch_size:
-    :param overlap_stepsize:
-    :return:
-    """
-
-    patch_ids = []
-
-    D, H, W, _ = cutted_image.shape
-
-    drange = list(range(0, D - patch_size + 1, overlap_stepsize))
-    hrange = list(range(0, H - patch_size + 1, overlap_stepsize))
-    wrange = list(range(0, W - patch_size + 1, overlap_stepsize))
-
-    if (D - patch_size) % overlap_stepsize != 0:
-        drange.append(D - patch_size)
-    if (H - patch_size) % overlap_stepsize != 0:
-        hrange.append(H - patch_size)
-    if (W - patch_size) % overlap_stepsize != 0:
-        wrange.append(W - patch_size)
-
-    for d in drange:
-        for h in hrange:
-            for w in wrange:
-                patch_ids.append((d, h, w))
-
-    return patch_ids
 
 
 def generate_ROI(volume):

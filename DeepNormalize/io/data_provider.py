@@ -1,3 +1,24 @@
+# -*- coding: utf-8 -*-
+# Copyright 2019 Pierre-Luc Delisle. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+"""
+A class for providing data to a TensorFlow neural network.
+
+"""
+
 import tensorflow as tf
 import os
 
@@ -16,7 +37,6 @@ class DataProvider(object):
         self._subset = subset
         self._batch_size = config.get("batch_size", 1)
         self._shuffle = config.get("shuffle", True)
-        self._augment = config.get("augment", False)
         self._use_fp16 = config.get("use_fp16", False)
         self._patch_shape = config.get("volume")["patch_size"]
         self._width = config.get("width", 240)
@@ -35,10 +55,15 @@ class DataProvider(object):
         # Declare a Sampler object here if required.
 
     def get_filename(self):
+        """
+        Returns the file name associated to the data set's subset.
+        :return: A string containing the complete path and file name.
+        """
         return os.path.join(self._path, self._subset + ".tfrecords")
 
     def _training_parser(self, serialized_example):
-        """Parses a single tf.Example which contains multiple modalities and label tensors.
+        """
+        Parses a single tf.Example which contains multiple modalities and label tensors.
         :param serialized_example: A TFRecord serialized example.
         :return: A tuple containing all parsed image modalities, segmentation and weight_map with slice dimensions.
         """
@@ -82,13 +107,6 @@ class DataProvider(object):
         t2 = tf.reshape(t2, original_shape)
         segmentation = tf.reshape(segmentation, original_shape)
         weight_map = tf.reshape(weight_map, original_shape)
-
-        # flair = tf.reshape(flair, [self._width, self._height, self._depth, self._n_channels])
-        # t1 = tf.reshape(t1, [self._width, self._height, self._depth, self._n_channels])
-        # t1ce = tf.reshape(t1ce, [self._width, self._height, self._depth, self._n_channels])
-        # t2 = tf.reshape(t2, [self._width, self._height, self._depth, self._n_channels])
-        # segmentation = tf.reshape(segmentation, [self._width, self._height, self._depth, self._n_channels])
-        # weight_map = tf.reshape(weight_map, [self._width, self._height, self._depth, self._n_channels])
 
         if self._use_fp16:
             flair = tf.cast(flair, dtype=tf.float16)
@@ -136,20 +154,23 @@ class DataProvider(object):
     def input(self):
         """
         Return a TensorFlow data set object containing inputs.
-        :return:
+        :return: dataset: TensorFlow data set object.
         """
 
+        # Get file names for this data set.
         filename = self.get_filename()
 
         with tf.name_scope("inputs"):
-            # Instantiate a new data set based on a provided TFRecord file name.
+            # Instantiate a new data set based on a provided TFRecord file name. Generate a Dataset with raw records.
             dataset = tf.data.TFRecordDataset(filename)
 
             # Parse records. Returns 1 volume with all its modalities.
             dataset = dataset.map(map_func=self._training_parser,
                                   num_parallel_calls=min(self._batch_size, os.cpu_count()))
 
-            # Potentially shuffle records.
+            # Prefetch 1 subject.
+            dataset = dataset.prefetch(1)
+
             if self._subset == "train" or "validation":
                 min_queue_examples = int(
                     DataProvider.num_examples_per_epoch(self._subset) * 0.10)
@@ -158,15 +179,18 @@ class DataProvider(object):
                 # shuffling.
                 dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
 
+                # Repeat indefinitely.
                 dataset = dataset.repeat()
 
+                # Returns randomly cropped images.
                 dataset = dataset.map(self.crop_image, num_parallel_calls=self._batch_size)
 
-            # Batch 3D patches.
+            # Batch 3D patches. Here, we want (training batch / number of modalities) samples per modality,
+            # which is usually 32 / 4 = 8 patches per modality.
             dataset = dataset.batch(int(self._train_batch_size / self._n_modalities))
 
             # Prepare for next iterations.
-            dataset = dataset.prefetch(2 * self._batch_size)
+            dataset = dataset.prefetch(self._batch_size)
 
             return dataset
 
@@ -181,34 +205,3 @@ class DataProvider(object):
         if subset == "test":
             # Return the number of volumes in test dataset.
             return int(26)
-
-    @staticmethod
-    def get_subjects_and_segmentations(path):
-        """
-        Utility method to get, filter and arrange BraTS data set in a series of lists.
-        :param path: The path to look for BraTS data set files.
-        :return: A tuple containing multimodal MRI images for each subject and their respective segmentation.
-        """
-        subjects = list()
-        segs = list()
-
-        for (dirpath, dirnames, filenames) in os.walk(path):
-            if len(filenames) is not 0:
-                segmentations = list(filter(lambda k: "seg.nii.gz" in k, filenames))
-                files = filenames
-                if segmentations:
-                    for seg in segmentations:
-                        files.remove(seg)
-                        segs.append(os.path.join(dirpath, seg))
-
-                paths = list()
-                for file in files:
-                    file = os.path.join(dirpath, file)
-                    paths.append(file)
-
-                paths.sort()
-                subjects.append(paths)
-
-        del subjects[0]  # Remove the survival.csv file.
-
-        return subjects, segs
