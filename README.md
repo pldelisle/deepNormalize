@@ -3,6 +3,36 @@
 3D medical images for maximizing segmentation while preserving the medical plausibility of the image all along
 the segmentation pipeline.
 
+
+## Using
+
+`python deepNormalize_main.py --data-dir=/path/to/tfrecords/folder/ --job-dir=./logs/`
+
+List of arguments to script :
+
+* --data-dir: String. The directory where the deepNormalize input data is stored
+	
+* --job-dir: String. The directory where the model will be stored.
+
+* --variable-strategy: choices=['CPU', 'GPU'];  Where to locate variable operations. Default to GPU.
+		
+* --num-gpus: Integer. The number of gpus used. Uses only CPU if set to 0.
+
+* --sync: Boolean. If present when running in a distributed environment will run on sync mode.
+
+* --num-intra-threads: Integer. Number of threads to use for intra-op parallelism. 
+      When training on CPU set to 0 to have the system pick the appropriate number or alternatively
+      set it to the number of physical CPU cores.
+
+* --num-inter-threads: Integer. Number of threads to use for inter-op parallelism. If set to 0, the
+      system will pick an appropriate number.
+
+*--data-format: choices=['channel_first', 'channel_last'] If not set, the data format best for the training device is used. 
+      Allowed values: channels_first (NCHW) for GPU usage, channels_last (NHWC) for CPU usage.
+
+*--log-device-placement: Boolean. Whether to log device placement.
+
+
 ## Contributing
 
 #### How to contribute ?

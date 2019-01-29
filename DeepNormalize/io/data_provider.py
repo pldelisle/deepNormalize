@@ -35,7 +35,7 @@ class DataProvider(object):
 
         self._path = path
         self._subset = subset
-        self._batch_size = config.get("batch_size", 1)
+        self._subject_batch_size = config.get("subject_batch_size", 1)
         self._shuffle = config.get("shuffle", True)
         self._use_fp16 = config.get("use_fp16", False)
         self._patch_shape = config.get("volume")["patch_size"]
@@ -43,7 +43,7 @@ class DataProvider(object):
         self._height = config.get("height", 240)
         self._depth = config.get("depth", 155)
         self._n_channels = config.get("n_channels", 1)
-        self._train_batch_size = config.get("train_batch_size", 32)
+        self._batch_size = config.get("batch_size", 32)
         self._n_modalities = config.get("n_modalities", 4)
         self._use_weight_map = config.get("use_weight_map", True)
 
@@ -166,10 +166,10 @@ class DataProvider(object):
 
             # Parse records. Returns 1 volume with all its modalities.
             dataset = dataset.map(map_func=self._training_parser,
-                                  num_parallel_calls=min(self._batch_size, os.cpu_count()))
+                                  num_parallel_calls=1)
 
-            # Prefetch 1 subject.
-            dataset = dataset.prefetch(1)
+            # Prefetch 10 subject.
+            dataset = dataset.prefetch(10)
 
             if self._subset == "train" or "validation":
                 min_queue_examples = int(
@@ -187,10 +187,10 @@ class DataProvider(object):
 
             # Batch 3D patches. Here, we want (training batch / number of modalities) samples per modality,
             # which is usually 32 / 4 = 8 patches per modality.
-            dataset = dataset.batch(int(self._train_batch_size / self._n_modalities))
+            dataset = dataset.batch(int(self._batch_size / self._n_modalities))
 
             # Prepare for next iterations.
-            dataset = dataset.prefetch(self._batch_size)
+            dataset = dataset.prefetch(10 * self._batch_size)
 
             return dataset
 
