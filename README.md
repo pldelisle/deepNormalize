@@ -8,7 +8,7 @@ the segmentation pipeline.
 
 `python deepNormalize_main.py --data-dir=/path/to/tfrecords/folder/ --job-dir=./logs/`
 
-List of arguments to script :
+List of arguments of this script :
 
 * --data-dir: String. The directory where the deepNormalize input data is stored
 	
@@ -29,10 +29,10 @@ List of arguments to script :
 * --num-inter-threads: Integer. Number of threads to use for inter-op parallelism. If set to 0, the
       system will pick an appropriate number.
 
-*--data-format: choices=['channel_first', 'channel_last'] If not set, the data format best for the training device is used. 
+* --data-format: choices=['channel_first', 'channel_last'] If not set, the data format best for the training device is used. 
       Allowed values: channels_first (NCHW) for GPU usage, channels_last (NHWC) for CPU usage.
 
-*--log-device-placement: Boolean. Whether to log device placement.
+*- -log-device-placement: Boolean. Whether to log device placement.
 
 
 ## Contributing
