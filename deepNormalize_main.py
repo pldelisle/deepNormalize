@@ -64,7 +64,7 @@ def train(args, config):
     # You can use feedable iterators with a variety of different kinds of iterator
     # (such as one-shot and initializable iterators).
     training_iterator = training_dataset.make_one_shot_iterator()
-    validation_iterator = validation_dataset.make_initializable_iterator()
+    validation_iterator = validation_dataset.make_one_shot_iterator()
 
     sess = tf.Session(config=sess_config)
 
@@ -83,6 +83,7 @@ def train(args, config):
             data = sess.run(next_element, feed_dict={handle: training_handle})
             end_time = time.time()
             print(end_time - start_time)
+            validation_data = sess.run(next_element, feed_dict={handle: validation_handle})
         # Run one pass over the validation dataset.
         sess.run(validation_iterator.initializer)
         for _ in range(50):

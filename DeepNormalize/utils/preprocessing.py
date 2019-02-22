@@ -30,7 +30,6 @@ def preprocess_images(subject_modalities, apply):
     """
     Preprocess a list of images. Each first-layer list represents a modality, while
     each modality contains a list of "batch_size" images, each belonging to a subject.
-    Modalities in order: FLAIR, T1, T1ce, T2, Segmentation, Weight Map.
     :param subject_modalities: A dictionary containing image modalities of one subject.
     :return: An dictionary containing preprocessed image modalities and slice template.
     """

@@ -54,7 +54,7 @@ class DataProvider(object):
 
         # Declare a Sampler object here if required.
 
-    def get_filename(self):
+    def _get_filename(self):
         """
         Returns the file name associated to the data set's subset.
         :return: A string containing the complete path and file name.
@@ -113,7 +113,7 @@ class DataProvider(object):
             t1 = tf.cast(t1, dtype=tf.float16)
             t1ce = tf.cast(t1ce, dtype=tf.float16)
             t2 = tf.cast(t2, dtype=tf.float16)
-            segmentation = tf.cast(segmentation, dtype=tf.float16)
+            segmentation = tf.cast(segmentation, dtype=tf.float16)  # Cast to FP16 because ongoing operations do not support mixed types (tf.Stack in random_crop).
             weight_map = tf.cast(weight_map, dtype=tf.float16)
 
         else:
@@ -121,12 +121,12 @@ class DataProvider(object):
             t1 = tf.cast(t1, dtype=tf.float32)
             t1ce = tf.cast(t1ce, dtype=tf.float32)
             t2 = tf.cast(t2, dtype=tf.float32)
-            segmentation = tf.cast(segmentation, dtype=tf.float32)
+            segmentation = tf.cast(segmentation, dtype=tf.float32)  # Cast to FP32 because ongoing operations do not support mixed types (tf.Stack in random_crop).
             weight_map = tf.cast(weight_map, dtype=tf.float32)
 
         return flair, t1, t1ce, t2, segmentation, weight_map, slices
 
-    def crop_image(self, flair, t1, t1ce, t2, segmentation, weight_map, slices):
+    def _crop_image(self, flair, t1, t1ce, t2, segmentation, weight_map, slices):
         """
         Crop modalities.
         :param flair: FLAIR modality of an image.
@@ -149,7 +149,19 @@ class DataProvider(object):
 
         [flair, t1, t1ce, t2, segmentation, weight_map] = tf.unstack(image, self._n_total_modalities, axis=-1)
 
-        return flair, t1, t1ce, t2, tf.cast(segmentation, tf.uint8), weight_map
+        return flair, t1, t1ce, t2, segmentation, weight_map
+
+    def _blank_filter(self, flair, t1, t1ce, t2, segmentation, weight_map):
+
+        stack = tf.stack([flair, t1, t1ce, t2, segmentation, weight_map], axis=-1)
+
+        valid_idx = tf.where(tf.math.reduce_sum(stack, axis=(0, 1, 2, 3)) > 0)
+
+        stack = tf.boolean_mask(stack, valid_idx, axis=-1)
+
+        [flair, t1, t1ce, t2, segmentation, weight_map] = tf.unstack(stack, self._n_total_modalities, axis=-1)
+
+        return flair, t1, t1ce, t2, segmentation, weight_map
 
     def input(self):
         """
@@ -158,7 +170,7 @@ class DataProvider(object):
         """
 
         # Get file names for this data set.
-        filename = self.get_filename()
+        filename = self._get_filename()
 
         with tf.name_scope("inputs"):
             # Instantiate a new data set based on a provided TFRecord file name. Generate a Dataset with raw records.
@@ -168,7 +180,7 @@ class DataProvider(object):
             dataset = dataset.map(map_func=self._training_parser,
                                   num_parallel_calls=1)
 
-            # Prefetch 10 subject.
+            # Prefetch 10 subject. Adjust with available system RAM.
             dataset = dataset.prefetch(10)
 
             if self._subset == "train" or "validation":
@@ -183,7 +195,10 @@ class DataProvider(object):
                 dataset = dataset.repeat()
 
                 # Returns randomly cropped images.
-                dataset = dataset.map(self.crop_image, num_parallel_calls=self._batch_size)
+                dataset = dataset.map(self._crop_image, num_parallel_calls=self._batch_size)
+
+                # Filter inputs for only non-zero patches.
+                dataset = dataset.filter(self._blank_filter)
 
             # Batch 3D patches. Here, we want (training batch / number of modalities) samples per modality,
             # which is usually 32 / 4 = 8 patches per modality.
