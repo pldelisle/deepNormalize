@@ -43,11 +43,11 @@ def extract_brain(volume, mask):
 def main(args):
     subjects = get_MRBrainS_data(args.data_dir)
 
-    keys = ["T1", "T1_IR", "T2_FLAIR", "ROI", "LabelsForTraining", "LabelsForTesting"]
+    keys = ["t1", "t1_ir", "t2", "roi", "LabelsForTraining", "label"]
 
     for subject_id, subject in enumerate(subjects):
 
-        label = nib.load(subject["LabelsForTraining"][0])
+        label = nib.load(subject["label"][0])
 
         for key in keys:
             # Get file name.
@@ -57,7 +57,9 @@ def main(args):
             image = nib.load(subject[key][0])
 
             # Apply transformations.
-            image = extract_brain(image, label)
+            if key != "label" or "LabelsForTraining":
+                image = extract_brain(image, label)
+
             image = resample_to_output(image, order=3)
 
             save_nifti_image(image,

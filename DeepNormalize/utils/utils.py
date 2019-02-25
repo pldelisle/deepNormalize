@@ -99,21 +99,12 @@ def save_nifti_image(new_image, output_dir, subject_id, filename):
     nib.save(new_image, filepath)
 
 
-def train_test_split(mrbrains, iseg):
-    random.shuffle(mrbrains)
-    random.shuffle(iseg)
+def train_test_split(dataset):
+    random.shuffle(dataset)
 
-    X_train_mrbrains = mrbrains[:-2]
-    X_valid_mrbrains = mrbrains[-2]
-    X_test_mrbrains = mrbrains[-1]
-
-    X_train_iseg = iseg[:-2]
-    X_valid_iseg = iseg[-2]
-    X_test_iseg = iseg[-1]
-
-    X_train = X_train_mrbrains + X_train_iseg
-    X_valid = [X_valid_mrbrains] + [X_valid_iseg]
-    X_test = [X_test_mrbrains] + [X_test_iseg]
+    X_train = dataset[:-2]
+    X_valid = [dataset[-2]]
+    X_test = [dataset[-1]]
 
     return X_train, X_valid, X_test
 

@@ -126,8 +126,6 @@ def write_training_examples(X, filename):
         # Append weight map to modality list.
         modalities["weight_map"] = weight_map
 
-        modalities["roi"] = np.expand_dims(nib.load(X[i]["roi"][0]).get_fdata().astype(np.int64), axis=-1)
-
         # Get slices from preprocessing without applying crop.
         slices = preprocess_images(modalities, apply=False)
 
@@ -283,36 +281,48 @@ def main(args):
 
     subjects_iSEG = get_iSEG_data(args.data_iseg)
 
-    X_train, X_test, X_valid = train_test_split(subjects_MRBRainS, subjects_iSEG)
+    datasets = [subjects_MRBRainS, subjects_iSEG]
 
-    print("Training set contains " + str(len(X_train)) + " images.")
-    print("Validation set contains " + str(len(X_valid)) + " images.")
-    print("Test set contains " + str(len(X_test)) + " images.")
+    for dataset in datasets:
 
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
+        path = dataset[0]["t1"][0]
+        training_file = ""
+        validation_file = ""
 
-    # Writes to text files the content of each training, validation and test list.
-    log_files = ["train_log.txt", "validation_log.txt", "test_log.txt"]
-    lists = [X_train, X_valid, X_test]
+        if "MRBrainS" in path:
+            training_file = args.output_dir + "/train-MRBrainS.tfrecords"
+            validation_file = args.output_dir + "/validation-MRBrainS.tfrecords"
 
-    for filename, list_to_log in zip(log_files, lists):
-        write_lists(filename, list_to_log, args.output_dir)
+        elif "iSEG" in path:
+            training_file = args.output_dir + "/train-iSEG.tfrecords"
+            validation_file = args.output_dir + "/validation-iSEG.tfrecords"
 
-    # Create TFRecords files.
-    training_file = args.output_dir + "/train.tfrecords"
-    validation_file = args.output_dir + "/validation.tfrecords"
+        X_train, X_test, X_valid = train_test_split(dataset)
 
-    patch_shape = [args.patch_shape, args.patch_shape, args.patch_shape, 1]
+        print("Training set contains " + str(len(X_train)) + " images.")
+        print("Validation set contains " + str(len(X_valid)) + " images.")
+        print("Test set contains " + str(len(X_test)) + " images.")
 
-    print("Processing training set.")
-    write_training_examples(X_train, training_file)
+        if not os.path.exists(args.output_dir):
+            os.makedirs(args.output_dir)
 
-    print("Processing validation set.")
-    write_training_examples(X_valid, validation_file)
+        # Writes to text files the content of each training, validation and test list.
+        log_files = ["train_log.txt", "validation_log.txt", "test_log.txt"]
+        lists = [X_train, X_valid, X_test]
 
-    print("Processing test set.")
-    write_testing_examples(X_test, args.output_dir, patch_shape, args.extraction_step)
+        for filename, list_to_log in zip(log_files, lists):
+            write_lists(filename, list_to_log, args.output_dir)
+
+        patch_shape = [args.patch_shape, args.patch_shape, args.patch_shape, 1]
+
+        print("Processing training set.")
+        write_training_examples(X_train, training_file)
+
+        print("Processing validation set.")
+        write_training_examples(X_valid, validation_file)
+
+        print("Processing test set.")
+        write_testing_examples(X_test, args.output_dir, patch_shape, args.extraction_step)
 
     return 0
 

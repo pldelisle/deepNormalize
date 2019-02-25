@@ -2,17 +2,29 @@
   "shuffle": 1,
   "use_fp16": "True",
   "use_weight_map": "True",
-  "batch_size": 32,
   "subject_batch_size": 1,
+  "batch_size": 32,
   "eval_batch_size": 32,
   "n_classes": 4,
-  "n_modalities": 4,
-  "volume": {
-    "width": 240,
-    "height": 240,
-    "depth": 155,
-    "n_channels": 1,
-    "patch_size": 64
+  "n_modalities": 2,
+  "patch_size": 64,
+  "dataset": {
+    "iSEG": {
+      "volume": {
+        "width": 144,
+        "height": 192,
+        "depth": 256,
+        "n_channels": 1
+      }
+    },
+    "MRBrainS": {
+      "volume": {
+        "width": 231,
+        "height": 261,
+        "depth": 202,
+        "n_channels": 1
+      }
+    }
   },
   "model": {
     "batch_norm_decay": 0.997,
