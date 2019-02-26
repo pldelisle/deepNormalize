@@ -46,9 +46,9 @@ class DataProvider(object):
         self._use_weight_map = config.get("use_weight_map", True)
 
         if self._use_weight_map:
-            self._n_total_modalities = self._n_modalities + 2
+            self._n_total_modalities = self._n_modalities + 3
         else:
-            self._n_total_modalities = self._n_modalities + 1
+            self._n_total_modalities = self._n_modalities + 2
 
         # Declare a Sampler object here if required.
 
@@ -161,6 +161,29 @@ class DataProvider(object):
 
         return t1, t2, segmentation, roi, weight_map
 
+    def _stack(self, t1, t2, segmentation, roi, weight_map):
+        """
+        Group modalities to get a shape of (N, C, H, W, D).
+        Groupe ROI and Segmentation.
+        Return segmentation unchanged.
+        Args:
+            t1: T1 modality of an image.
+            t2: T2 modality of an image.
+            segmentation: Labels of an image.
+            roi: Region of interest of an image.
+            weight_map: Associated weight map of an image.
+
+        Returns:
+            A tuple of stacks and segmentation.
+
+        """
+
+        stack = tf.squeeze(tf.stack([t1, t2], axis=0))
+
+        stack2 = tf.squeeze(tf.stack([roi, weight_map], axis=0))
+
+        return stack, stack2, segmentation
+
     # def _blank_filter(self, flair, t1, t1ce, t2, segmentation, weight_map):
     #
     #     stack = tf.stack([flair, t1, t1ce, t2, segmentation, weight_map], axis=-1)
@@ -176,6 +199,8 @@ class DataProvider(object):
     def input(self):
         """
         Return a TensorFlow data set object containing inputs.
+        Get the TFRecords filenames and create the number of data sets the list contains. Concatenates these data sets
+        afterwards for multi-data set learning.
         :return: dataset: TensorFlow data set object.
         """
 
@@ -201,25 +226,27 @@ class DataProvider(object):
                                       num_parallel_calls=1)
 
                 # Prefetch 10 subject. Adjust with available system RAM.
-                #dataset = dataset.prefetch(10)
+                dataset = dataset.prefetch(10)
 
                 if self._subset == "train" or "validation":
-                    # min_queue_examples = int(
-                    #     DataProvider.num_examples_per_epoch(self._subset) * 0.10)
+                    min_queue_examples = int(
+                        DataProvider.num_examples_per_epoch(self._subset) * 0.10)
 
                     # Ensure that the capacity is sufficiently large to provide good random
                     # shuffling.
-                    #dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
+                    dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
 
                     # Repeat indefinitely.
                     dataset = dataset.repeat()
 
                     # Returns randomly cropped images.
-                    #dataset = dataset.map(self._crop_image, num_parallel_calls=self._batch_size)
+                    dataset = dataset.map(self._crop_image, num_parallel_calls=self._batch_size)
+
+                    dataset = dataset.map(self._stack, num_parallel_calls=self._batch_size)
 
                     # Batch 3D patches. Here, we want (training batch / number of modalities) samples per modality,
                     # which is usually 32 / 4 = 8 patches per modality.
-                    dataset = dataset.batch(int(self._batch_size / self._n_modalities))
+                    dataset = dataset.batch(self._batch_size)
 
                     datasets.append(dataset)
                     # # Filter inputs for only non-zero patches.
@@ -228,18 +255,26 @@ class DataProvider(object):
             dataset = [datasets[i].concatenate(datasets[i + 1]) for i in range(len(datasets) - 1)]
 
             # Prepare for next iterations.
-           # dataset = dataset[0].prefetch(10 * self._batch_size)
+            dataset = dataset[0].prefetch(10 * self._batch_size)
 
             return dataset
 
     @staticmethod
     def num_examples_per_epoch(subset):
+        """
+        Returns the number of images in each subsets.
+        Args:
+            subset: a string containing the name of a subset (train, validation or test).
+
+        Returns: integer representing the number of images in this subset.
+
+        """
         if subset == "train":
             # Return the number of volumes in training dataset.
-            return int(230)
+            return int(15)
         if subset == "validation":
             # Return the number of volumes in validation dataset.
-            return int(29)
+            return int(2)
         if subset == "test":
             # Return the number of volumes in test dataset.
-            return int(26)
+            return int(2)

@@ -6,7 +6,7 @@
   "batch_size": 32,
   "eval_batch_size": 32,
   "n_classes": 4,
-  "n_modalities": 3,
+  "n_modalities": 2,
   "patch_size": 64,
   "dataset": {
     "iSEG": {

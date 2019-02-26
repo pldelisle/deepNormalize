@@ -24,23 +24,18 @@ from __future__ import print_function
 
 import tensorflow as tf
 import argparse
-import os
 import os.path
-import re
 import time
 import json
 import numpy as np
-import nibabel as nib
 import matplotlib.pyplot as plt
 
-from DeepNormalize.utils.utils import get_MRBrainS_data, get_iSEG_data, train_test_split, correct_class_ids
-
-from six.moves import xrange  # pylint: disable=redefined-builtin
-
 from DeepNormalize.io.data_provider import DataProvider
+from DeepNormalize.utils.utils import print_inputs
 
 
 def train(args, config):
+    verbose = False
     # Session configuration.
     sess_config = tf.ConfigProto(
         allow_soft_placement=True,
@@ -48,20 +43,6 @@ def train(args, config):
         intra_op_parallelism_threads=args.num_intra_threads,
         inter_op_parallelism_threads=args.num_inter_threads,
         gpu_options=tf.GPUOptions(force_gpu_compatible=True))
-
-    # subjects_MRBRainS = get_MRBrainS_data(args.data_mrbrains)
-    # subjects_iSEG = get_iSEG_data(args.data_iseg)
-    # datasets = [subjects_MRBRainS, subjects_iSEG]
-    # X_train_MRBrainS, X_test_MRBrainS, X_valid_MRBrainS = train_test_split(subjects_MRBRainS)
-    # X_train_iSEG, X_test_iSEG, X_valid_iSEG = train_test_split(subjects_iSEG)
-    #
-    # X = np.zeros((len(X_train_MRBrainS), 3, config.get("dataset")["MRBrainS"]["volume"]["width"],
-    #               config.get("dataset")["MRBrainS"]["volume"]["height"],
-    #               config.get("dataset")["MRBrainS"]["volume"]["depth"]))
-    #
-    # for i, element in enumerate(X_train_MRBrainS):
-    #     X[i][0] = nib.load(element["t1"][0]).get_fdata()
-    #     print("debug")
 
     dataset_train = DataProvider(args.data_dir, "train", config)
     dataset_validation = DataProvider(args.data_dir, "validation", config)
@@ -99,18 +80,15 @@ def train(args, config):
         for _ in range(200):
             start_time = time.time()
             data = sess.run(next_element, feed_dict={handle: training_handle})
-            for modality in range(len(data)):
-                patch = data[modality][0].squeeze().astype(np.int32)
-
-                if modality < 4:
-                    plt.imshow(patch[:, :, 120], cmap='gray')
-                    plt.savefig(str(modality) + ".png")
-                else:
-                    plt.imshow(patch[:, :, 120], cmap='hsv')
-                    plt.savefig(str(modality) + ".png")
+            if verbose:
+                print_inputs(data)
             end_time = time.time()
-            print(end_time - start_time)
+            print("Training time " + str(end_time - start_time))
+            start_time = time.time()
             validation_data = sess.run(next_element, feed_dict={handle: validation_handle})
+            end_time = time.time()
+            print("Validation time " + str(end_time - start_time))
+
         # Run one pass over the validation dataset.
         sess.run(validation_iterator.initializer)
         for _ in range(50):
@@ -124,16 +102,6 @@ if __name__ == '__main__':
         type=str,
         required=True,
         help='The directory where the deepNormalize input data is stored.')
-    # parser.add_argument(
-    #     '--data-mrbrains',
-    #     type=str,
-    #     required=True,
-    #     help='The directory where the deepNormalize input data is stored.')
-    # parser.add_argument(
-    #     '--data-iseg',
-    #     type=str,
-    #     required=True,
-    #     help='The directory where the deepNormalize input data is stored.')
     parser.add_argument(
         '--job-dir',
         type=str,

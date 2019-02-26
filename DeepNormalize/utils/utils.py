@@ -3,6 +3,8 @@ import re
 import random
 import nibabel as nib
 import cupy as cp
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 def get_MRBrainS_data(path):
@@ -137,3 +139,19 @@ def generate_ROI(volume):
     roiVolume[idx] = 1
 
     return roiVolume.get()
+
+
+def print_inputs(data):
+    for i, subject in enumerate(range(data[0].shape[0])):
+
+        if not os.path.exists(os.path.join("outputs", str(i))):
+            os.makedirs(os.path.join("outputs", str(i)))
+
+        for modality in range(data[0].shape[1]):
+            patch = data[0][i][modality].astype(np.int32)
+            plt.imshow(patch[:, :, 32], cmap='gray')
+            plt.savefig("outputs/" + str(i) + "/T" + str(modality + 1) + ".png")
+
+        seg = np.squeeze(data[2][i]).astype(np.int32)
+        plt.imshow(seg[:, :, 32], cmap='gray')
+        plt.savefig("outputs/" + str(i) + "/seg.png")
