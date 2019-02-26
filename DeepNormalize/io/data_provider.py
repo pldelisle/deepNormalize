@@ -198,24 +198,24 @@ class DataProvider(object):
 
                 # Parse records. Returns 1 volume with all its modalities.
                 dataset = dataset.map(map_func=lambda x: self._training_parser(x, current_data_set),
-                                      num_parallel_calls=self._subject_batch_size)
+                                      num_parallel_calls=1)
 
                 # Prefetch 10 subject. Adjust with available system RAM.
-                dataset = dataset.prefetch(10)
+                #dataset = dataset.prefetch(10)
 
                 if self._subset == "train" or "validation":
-                    min_queue_examples = int(
-                        DataProvider.num_examples_per_epoch(self._subset) * 0.10)
+                    # min_queue_examples = int(
+                    #     DataProvider.num_examples_per_epoch(self._subset) * 0.10)
 
                     # Ensure that the capacity is sufficiently large to provide good random
                     # shuffling.
-                    dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
+                    #dataset = dataset.shuffle(buffer_size=min_queue_examples + 2 * self._batch_size)
 
                     # Repeat indefinitely.
                     dataset = dataset.repeat()
 
                     # Returns randomly cropped images.
-                    dataset = dataset.map(self._crop_image, num_parallel_calls=self._batch_size)
+                    #dataset = dataset.map(self._crop_image, num_parallel_calls=self._batch_size)
 
                     # Batch 3D patches. Here, we want (training batch / number of modalities) samples per modality,
                     # which is usually 32 / 4 = 8 patches per modality.
@@ -228,7 +228,7 @@ class DataProvider(object):
             dataset = [datasets[i].concatenate(datasets[i + 1]) for i in range(len(datasets) - 1)]
 
             # Prepare for next iterations.
-            dataset = dataset[0].prefetch(10 * self._batch_size)
+           # dataset = dataset[0].prefetch(10 * self._batch_size)
 
             return dataset
 
