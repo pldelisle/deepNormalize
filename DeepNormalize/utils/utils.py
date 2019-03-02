@@ -141,7 +141,7 @@ def generate_ROI(volume):
     return roiVolume.get()
 
 
-def print_inputs(data):
+def export_inputs(data):
     for i, subject in enumerate(range(data[0].shape[0])):
 
         if not os.path.exists(os.path.join("outputs", str(i))):
