@@ -1,11 +1,12 @@
 {
-  "use_fp16": true,
   "use_weight_map": true,
   "export_inputs": false,
+  "write_graph": true,
   "inputs": {
+    "use_fp16": false,
     "subject_batch_size": 2,
-    "batch_size": 32,
-    "eval_batch_size": 32,
+    "batch_size": 8,
+    "eval_batch_size": 8,
     "n_modalities": 2,
     "patch_size": 64,
     "dataset": {
@@ -33,15 +34,16 @@
     "weight_decay": 2e-4,
     "learning_rate": 0.0001,
     "learning_rate_decay": 0.995,
-    "train_step": 1000000,
+    "n_epochs": 1000000,
     "n_filters": [
+      16,
       32,
       64,
       128,
-      256,
-      512
+      256
     ],
     "activation_func": "relu",
-    "n_classes": 3
+    "n_classes": 4,
+    "log_interval": 1
   }
 }

@@ -2,7 +2,6 @@ import tensorflow as tf
 
 from DeepNormalize.layers.convolution import Convolution3D, Deconvolution3D
 from DeepNormalize.layers.downsample import DownSample
-from DeepNormalize.layers.layer_util import infer_spatial_rank
 
 
 class UNetBlock(tf.keras.Model):
@@ -21,30 +20,38 @@ class UNetBlock(tf.keras.Model):
         self.activation_func = activation_func
         self.with_batch_norm = with_batch_norm
 
+        self.conv = list()
+
+        for kernel_size, filters in zip(self.kernel_sizes, self.n_channels):
+            self.conv.append(Convolution3D(filters=filters,
+                                           kernel_size=kernel_size,
+                                           with_bn=self.with_batch_norm,
+                                           padding=self.padding,
+                                           activation_func=self.activation_func))
+
+        self.downsample = DownSample("MAX",
+                                     kernel_size=2,
+                                     strides=2)
+
+        self.upsample = Deconvolution3D(filters=self.n_channels[-1],
+                                        kernel_size=2,
+                                        strides=2)
+
     def call(self, input_tensor):
         x = input_tensor
 
-        for kernel_size, filters in zip(self.kernel_sizes, self.n_channels):
-            conv = Convolution3D(filters=filters,
-                                 kernel_size=kernel_size,
-                                 with_bn=self.with_batch_norm,
-                                 padding=self.padding,
-                                 activation_func=self.activation_func)
-            x = conv(x)
+        for layer in self.conv:
+            x = layer(x)
 
         branch_output = x
 
         if self.func == "DOWNSAMPLE":
-            downsample = DownSample("MAX",
-                                    kernel_size=2,
-                                    strides=2)
-            x = downsample(x)
+
+            x = self.downsample(x)
 
         elif self.func == "UPSAMPLE":
-            upsample = Deconvolution3D(filters=self.n_channels[-1],
-                                       kernel_size=2,
-                                       strides=2)
-            x = upsample(x)
+
+            x = self.upsample(x)
 
         elif self.func == "NONE":
             pass

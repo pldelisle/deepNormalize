@@ -4,6 +4,7 @@
     <list>
       <list>
         <remote-mappings server-id="python@1f657b5d-5411-41c9-a01e-05180b1280f2" />
+        <remote-mappings server-id="python@sftp://pierre-luc-delisle@10.0.3.9:22/home/pierre-luc-delisle/Documents/mypython3.sh" />
       </list>
     </list>
   </component>

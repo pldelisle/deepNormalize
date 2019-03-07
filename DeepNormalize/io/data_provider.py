@@ -178,9 +178,11 @@ class DataProvider(object):
 
         """
 
-        stack = tf.squeeze(tf.stack([t1, t2], axis=0))
+        stack = tf.transpose(tf.squeeze(tf.stack([t1, t2], axis=-1)), perm=[3, 0, 1, 2])
 
-        stack2 = tf.squeeze(tf.stack([roi, weight_map], axis=0))
+        stack2 = tf.transpose(tf.squeeze(tf.stack([roi, weight_map], axis=-1)), perm=[3, 0, 1, 2])
+
+        segmentation = tf.transpose(segmentation, perm=[3, 0, 1, 2])
 
         return stack, stack2, segmentation
 

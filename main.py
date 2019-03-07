@@ -27,27 +27,31 @@ import argparse
 import os.path
 import json
 
-from DeepNormalize.training.train import Trainer
+from DeepNormalize.training.train_eager import Trainer
 from DeepNormalize.model.deepNormalize import DeepNormalize
+
+tf.enable_eager_execution()
+tf.enable_v2_behavior()
+
+print("TensorFlow version: {}".format(tf.__version__))
+print("Keras version: {}".format(tf.keras.__version__))
+print("Eager execution: {}".format(tf.executing_eagerly()))
 
 
 def main(args, config):
-    with tf.device("/cpu:0"):
-        # model = tf.keras.models.Sequential()
-        # model.add(tf.keras.layers.Dense(10, input_shape=(10,)))
-
-        model = DeepNormalize(config=config, n_gpus=args.n_gpus)
-
-    model = tf.keras.utils.multi_gpu_model(model, gpus=args.n_gpus, cpu_merge=False)
-    print("Training using multiple GPUs.")
-
+    model = DeepNormalize(config=config, n_gpus=args.n_gpus)
+    # model.compile(optimizer=tf.train.AdamOptimizer(0.001),
+    #               loss="mse",
+    #               metrics=["accuracy"])
+    # try:
+    #     model = tf.keras.utils.multi_gpu_model(model, gpus=args.n_gpus, cpu_merge=False)
+    #     print("Training using multiple GPUs.")
     # except:
-    #     print()
     #     print("Training using single GPU or CPU.")
 
     trainer = Trainer(model, args=args, config=config)
 
-    trainer.train()
+    trainer.run_eager_training()
 
     print("Debug")
 
@@ -64,6 +68,11 @@ if __name__ == '__main__':
         type=str,
         required=True,
         help='The directory where the model will be stored.')
+    parser.add_argument(
+        '--restore-dir',
+        type=str,
+        required=True,
+        help='The directory where the model will be restored if exists.')
     parser.add_argument(
         '--variable-strategy',
         choices=['CPU', 'GPU'],

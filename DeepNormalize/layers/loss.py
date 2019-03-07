@@ -195,9 +195,12 @@ def cross_entropy(prediction, ground_truth, weight_map=None):
 def tversky(prediction, ground_truth, weight_map=None, alpha=0.5, beta=0.5):
     """
     Function to calculate the Tversky loss for imbalanced data
+
         Sadegh et al. (2017)
+
         Tversky loss function for image segmentation
         using 3D fully convolutional deep networks
+
     :param prediction: the logits
     :param ground_truth: the segmentation ground_truth
     :param alpha: weight of false positives
@@ -206,9 +209,9 @@ def tversky(prediction, ground_truth, weight_map=None, alpha=0.5, beta=0.5):
     :return: the loss
     """
     prediction = tf.to_float(prediction)
-    if len(ground_truth.shape) == len(prediction.shape):
-        ground_truth = ground_truth[..., -1]
-    one_hot = labels_to_one_hot(ground_truth, tf.shape(prediction)[-1])
+    # if len(ground_truth.shape) == len(prediction.shape):
+    #     ground_truth = ground_truth[..., -1]
+    one_hot = labels_to_one_hot(ground_truth, tf.shape(prediction)[1])
     one_hot = tf.sparse.to_dense(one_hot)
 
     p0 = prediction

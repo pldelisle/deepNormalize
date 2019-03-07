@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 from DeepNormalize.layers.mirror_padding import SymmetricPadding
 from DeepNormalize.layers.layer_util import expand_spatial_params
@@ -17,20 +18,29 @@ class Convolution3D(tf.keras.Model):
                                                          kernel_size=kernel_size,
                                                          padding="valid",
                                                          data_format="channels_first",
-                                                         activation=activation_func,
+                                                         activation=None,
                                                          use_bias=True,
                                                          kernel_initializer=tf.keras.initializers.glorot_uniform,
                                                          bias_initializer=tf.keras.initializers.Zeros,
                                                          kernel_regularizer=tf.keras.regularizers.L1L2(0.01, 0.01),
                                                          bias_regularizer=tf.keras.regularizers.L1L2(0.01, 0.01))
+
+        if activation_func == "relu":
+            self.activation_func = tf.keras.layers.LeakyReLU()
+        elif activation_func == "softmax":
+            self.activation_func = tf.keras.layers.Softmax(axis=1)
+        else:
+            raise NotImplementedError("Activation function not implemented.")
+
         if self.with_bn:
-            self.batch_norm = tf.keras.layers.BatchNormalization()
+            self.batch_norm = tf.keras.layers.BatchNormalization(axis=1)
 
     def call(self, input_tensor):
         x = input_tensor
         if self.padding == "symmetric":
             x = self.padding_layer(input_tensor)
         x = self.convolution(x)
+        x = self.activation_func(x)
         if self.with_bn:
             x = self.batch_norm(x)
         return x
