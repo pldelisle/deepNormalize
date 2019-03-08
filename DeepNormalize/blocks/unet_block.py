@@ -28,14 +28,20 @@ class UNetBlock(tf.keras.Model):
                                            with_bn=self.with_batch_norm,
                                            padding=self.padding,
                                            activation_func=self.activation_func))
+        if self.func == "DOWNSAMPLE":
+            self.downsample = DownSample("MAX",
+                                         kernel_size=2,
+                                         strides=2)
+        elif self.func == "UPSAMPLE":
+            self.upsample = Deconvolution3D(filters=self.n_channels[-1],
+                                            kernel_size=2,
+                                            strides=2)
 
-        self.downsample = DownSample("MAX",
-                                     kernel_size=2,
-                                     strides=2)
+        elif self.func == "NONE":
+            pass
 
-        self.upsample = Deconvolution3D(filters=self.n_channels[-1],
-                                        kernel_size=2,
-                                        strides=2)
+        else:
+            raise NotImplementedError("UNet Block function not implemented.")
 
     def call(self, input_tensor):
         x = input_tensor

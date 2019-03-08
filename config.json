@@ -4,11 +4,11 @@
   "write_graph": true,
   "inputs": {
     "use_fp16": false,
-    "subject_batch_size": 2,
+    "subject_batch_size": 8,
     "batch_size": 8,
     "eval_batch_size": 8,
     "n_modalities": 2,
-    "patch_size": 64,
+    "patch_size": 32,
     "dataset": {
       "iSEG": {
         "volume": {

@@ -38,7 +38,7 @@ class Convolution3D(tf.keras.Model):
     def call(self, input_tensor):
         x = input_tensor
         if self.padding == "symmetric":
-            x = self.padding_layer(input_tensor)
+            x = self.padding_layer(x)
         x = self.convolution(x)
         x = self.activation_func(x)
         if self.with_bn:
