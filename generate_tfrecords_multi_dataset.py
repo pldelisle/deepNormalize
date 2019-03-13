@@ -19,13 +19,12 @@ Generate TFRecords files for medical images.
 
 """
 
-import re
 import numpy as np
 import tensorflow as tf
 from skimage.segmentation import find_boundaries
 from scipy.ndimage.morphology import distance_transform_edt
-from DeepNormalize.utils.utils import get_MRBrainS_data, get_iSEG_data, train_test_split, correct_class_ids
-from DeepNormalize.utils.preprocessing import preprocess_images, get_patches
+from DeepNormalize.utils.utils import get_MRBrainS_subjects, get_iSEG_subjects, train_test_split, correct_class_ids_iSEG
+from DeepNormalize.old.preprocessing import preprocess_images, get_patches
 import nibabel as nib
 import argparse
 import os
@@ -109,7 +108,7 @@ def write_training_examples(X, filename):
         seg = nib.load(X[i]["label"][0]).get_fdata().astype(np.int64)
 
         # Make all classes contiguous in [0, 3] space.
-        seg = correct_class_ids(seg)
+        seg = correct_class_ids_iSEG(seg)
 
         # Construct the weight map according to the segmentation.
         weight_map, _ = construct_weights_and_mask(seg)
@@ -277,9 +276,9 @@ def write_lists(filename, list_to_log, path):
 
 
 def main(args):
-    subjects_MRBRainS = get_MRBrainS_data(args.data_mrbrains)
+    subjects_MRBRainS = get_MRBrainS_subjects(args.data_mrbrains)
 
-    subjects_iSEG = get_iSEG_data(args.data_iseg)
+    subjects_iSEG = get_iSEG_subjects(args.data_iseg)
 
     datasets = [subjects_MRBRainS, subjects_iSEG]
 

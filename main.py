@@ -22,36 +22,59 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
 import argparse
 import os.path
 import json
+import sys
+import numpy as np
+import torch
+import torchsummary
 
-from DeepNormalize.training.train_eager import Trainer
-from DeepNormalize.model.deepNormalize import DeepNormalize
+from matplotlib import __version__ as mplver
 
-tf.enable_eager_execution()
-tf.enable_v2_behavior()
+from DeepNormalize.io.data_provider import DataProvider
 
-print("TensorFlow version: {}".format(tf.__version__))
-print("Keras version: {}".format(tf.keras.__version__))
-print("Eager execution: {}".format(tf.executing_eagerly()))
+from DeepNormalize.training.train import Trainer
+
+from DeepNormalize.model.DeepNormalize.deepNormalize import DeepNormalize
+from DeepNormalize.model.GAN.gan import Discriminator
+
+pv = sys.version_info
+print('Python version: {}.{}.{}'.format(pv.major, pv.minor, pv.micro))
+print('Numpy version: {}'.format(np.__version__))
+print("PyTorch version: {}".format(torch.__version__))
+print('Matplotlib version: {}'.format(mplver))
 
 
 def main(args, config):
-    model = DeepNormalize(config=config, n_gpus=args.n_gpus)
-    # model.compile(optimizer=tf.train.AdamOptimizer(0.001),
-    #               loss="mse",
-    #               metrics=["accuracy"])
-    # try:
-    #     model = tf.keras.utils.multi_gpu_model(model, gpus=args.n_gpus, cpu_merge=False)
-    #     print("Training using multiple GPUs.")
-    # except:
-    #     print("Training using single GPU or CPU.")
+    # print(Cuda())
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    trainer = Trainer(model, args=args, config=config)
+    generator = DeepNormalize(config=config.get("model").get("deep_normalize"))
+    torchsummary.summary(generator, input_size=(2, 64, 64, 64), device="cpu")
 
-    trainer.run_eager_training()
+    discriminator = Discriminator()
+    torchsummary.summary(discriminator, input_size=(2, 64, 64, 64), device="cpu")
+
+    if torch.cuda.device_count() > 1:
+        generator = generator.cuda()
+        discriminator = discriminator.cuda()
+        print("Let's use", torch.cuda.device_count(), "GPUs.")
+        generator = torch.nn.DataParallel(generator)
+        discriminator = torch.nn.DataParallel(discriminator)
+    else:
+        generator = generator.to(device).float()
+        discriminator = discriminator.to(device).float()
+        print("Training on single GPU or CPU.")
+
+    data_provider = DataProvider(config=config.get("inputs"))
+    trainer = Trainer(generator,
+                      discriminator,
+                      data_provider,
+                      config_generator=config.get("model").get("deep_normalize").get("training"),
+                      config_discriminator=config.get("model").get("resnet").get("training"))
+
+    trainer.train()
 
     print("Debug")
 
@@ -71,14 +94,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--restore-dir',
         type=str,
-        required=True,
+        required=False,
         help='The directory where the model will be restored if exists.')
-    parser.add_argument(
-        '--variable-strategy',
-        choices=['CPU', 'GPU'],
-        type=str,
-        default='CPU',
-        help='Where to locate variable operations')
     parser.add_argument(
         '--n-gpus',
         type=int,
@@ -87,15 +104,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--gpu-id',
         type=str,
-        default="1",
+        default="0",
         help='The GPU ID on which to run the training.')
-    parser.add_argument(
-        '--sync',
-        action='store_true',
-        default=False,
-        help="""\
-      If present when running in a distributed environment will run on sync mode.\
-      """)
     parser.add_argument(
         '--num-intra-threads',
         type=int,
@@ -113,19 +123,6 @@ if __name__ == '__main__':
       Number of threads to use for inter-op parallelism. If set to 0, the
       system will pick an appropriate number.\
       """)
-    parser.add_argument(
-        '--data-format',
-        type=str,
-        default=None,
-        help="""\
-      If not set, the data format best for the training device is used. 
-      Allowed values: channels_first (NCHW) channels_last (NHWC).\
-      """)
-    parser.add_argument(
-        '--log-device-placement',
-        action='store_true',
-        default=False,
-        help='Whether to log device placement.')
 
     args = parser.parse_args()
 
@@ -139,17 +136,7 @@ if __name__ == '__main__':
 
     # Make some pre-testing on configuration.
     if args.n_gpus > 0:
-        assert tf.test.is_gpu_available(), "Requested GPUs but none found."
-    if args.n_gpus < 0:
-        raise ValueError(
-            'Invalid GPU count: \"--num-gpus\" must be 0 or a positive integer.')
-    if args.n_gpus == 0 and args.variable_strategy == 'GPU':
-        raise ValueError('num-gpus=0, CPU must be used as parameter server. Set'
-                         '--variable-strategy=CPU.')
-    if args.n_gpus != 0 and config.get("inputs")["subject_batch_size"] % args.n_gpus != 0:
-        raise ValueError('--train-batch-size must be multiple of --n-gpus.')
-    if args.n_gpus != 0 and config.get("inputs")["eval_batch_size"] % args.n_gpus != 0:
-        raise ValueError('--eval-batch-size must be multiple of --n-gpus.')
+        assert torch.cuda.is_available(), "Requested GPUs but none found."
 
     # Launch training.
     main(args=args, config=config)

@@ -1,49 +1,53 @@
 {
-  "use_weight_map": true,
-  "export_inputs": false,
-  "write_graph": true,
   "inputs": {
     "use_fp16": false,
-    "subject_batch_size": 8,
-    "batch_size": 8,
-    "eval_batch_size": 8,
+    "training_batch_size": 2,
+    "valid_batch_size": 2,
     "n_modalities": 2,
-    "patch_size": 32,
+    "patch_size": 64,
     "dataset": {
       "iSEG": {
-        "volume": {
-          "width": 144,
-          "height": 192,
-          "depth": 256,
-          "n_channels": 1
-        }
+        "image_t1_path": "/home/pierre-luc-delisle/Documents/Research/Data/Original/iSEG/Training/images/t1",
+        "image_t2_path": "/home/pierre-luc-delisle/Documents/Research/Data/Original/iSEG/Training/images/t2",
+        "label_path": "/home/pierre-luc-delisle/Documents/Research/Data/Original/iSEG/Training/labels"
       },
       "MRBrainS": {
-        "volume": {
-          "width": 250,
-          "height": 280,
-          "depth": 240,
-          "n_channels": 1
-        }
+        "image_t1_path": "/home/pierre-luc-delisle/Documents/Research/Data/Original/MRBrainS_2013/Preprocessed/images/t1",
+        "image_t2_path": "/home/pierre-luc-delisle/Documents/Research/Data/Original/MRBrainS_2013/Preprocessed/images/t2",
+        "label_path": "/home/pierre-luc-delisle/Documents/Research/Data/Original/MRBrainS_2013/Preprocessed/labels/LabelsForTesting"
       }
     }
   },
   "model": {
-    "batch_norm_decay": 0.997,
-    "batch_norm_epsilon": 1e-5,
-    "weight_decay": 2e-4,
-    "learning_rate": 0.0001,
-    "learning_rate_decay": 0.995,
-    "n_epochs": 1000000,
-    "n_filters": [
-      16,
-      32,
-      64,
-      128,
-      256
-    ],
-    "activation_func": "relu",
-    "n_classes": 4,
-    "log_interval": 1
+    "deep_normalize": {
+      "n_filters": [
+        16,
+        32,
+        64,
+        128,
+        256
+      ],
+      "activation_func": "leaky_relu",
+      "n_classes": 4,
+      "log_interval": 1,
+      "training": {
+        "batch_norm_decay": 0.997,
+        "batch_norm_epsilon": 1e-5,
+        "weight_decay": 2e-4,
+        "learning_rate": 0.0001,
+        "learning_rate_decay": 0.995,
+        "alpha": 0.3,
+        "beta": 0.7,
+        "eps": 1e-6,
+        "n_classes": 4
+      }
+    },
+    "resnet": {
+      "n_classes": 2,
+      "n_layers": 50,
+      "training": {
+        "learning_rate": 0.0001
+      }
+    }
   }
 }

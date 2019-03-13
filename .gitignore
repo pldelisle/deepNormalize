@@ -73,7 +73,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+DeepNormalize/libs/
 lib64/
 parts/
 sdist/

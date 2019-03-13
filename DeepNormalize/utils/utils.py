@@ -6,8 +6,33 @@ import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 
+from typing import List, Tuple
 
-def get_MRBrainS_data(path):
+from glob import glob
+import os
+
+__all__ = ['split_filename',
+           'glob_imgs']
+
+
+def split_filename(filepath: str) -> Tuple[str, str, str]:
+    """ split a filepath into the directory, base, and extension """
+    path = os.path.dirname(filepath)
+    filename = os.path.basename(filepath)
+    base, ext = os.path.splitext(filename)
+    if ext == '.gz':
+        base, ext2 = os.path.splitext(base)
+        ext = ext2 + ext
+    return path, base, ext
+
+
+def glob_imgs(path: str, ext='*.nii*') -> List[str]:
+    """ grab all `ext` files in a directory and sort them for consistency """
+    fns = sorted(glob(os.path.join(path + "/*/", ext)))
+    return fns
+
+
+def get_MRBrainS_subjects(path):
     """
     Utility method to get, filter and arrange BraTS data set in a series of lists.
     Args:
@@ -17,7 +42,7 @@ def get_MRBrainS_data(path):
         A tuple containing multimodal MRI images for each subject and their respective segmentation.
     """
     subjects = list()
-    keys = ["t1", "t1_1mm", "t1_ir", "t2", "roi", "LabelsForTraining", "label"]
+    keys = ["t1", "t1_1mm", "t1_ir", "t2", "roi", "LabelsForTraining", "LabelsForTesting"]
 
     for (dirpath, dirnames, filenames) in os.walk(path):
         if len(filenames) is not 0:
@@ -49,7 +74,7 @@ def get_MRBrainS_data(path):
     return subjects
 
 
-def get_iSEG_data(path):
+def get_iSEG_subjects(path):
     """
         Utility method to get, filter and arrange BraTS data set in a series of lists.
         Args:
@@ -68,7 +93,7 @@ def get_iSEG_data(path):
             t1 = list(filter(re.compile(r"^.*?T1.nii$").search, filenames))
             t2 = list(filter(re.compile(r"^.*?T2.nii$").search, filenames))
             roi = list(filter(re.compile(r"^.*?ROIT1.nii.gz$").search, filenames))
-            seg_training = list(filter(re.compile(r"^.*?label.nii$").search, filenames))
+            seg_training = list(filter(re.compile(r"^.*?labels.nii$").search, filenames))
 
             t1 = [os.path.join(dirpath, ("{}".format(i))) for i in t1]
             t2 = [os.path.join(dirpath, ("{}".format(i))) for i in t2]
@@ -85,7 +110,7 @@ def get_iSEG_data(path):
 
 def save_nifti_image(new_image, output_dir, subject_id, filename):
     """
-    Save the preprocessed image.
+    Save the preprocessed image into a specific output directory.
     Args:
         subject_id: Will save in the subject_id folder.
         filename: The new file name.
@@ -99,28 +124,6 @@ def save_nifti_image(new_image, output_dir, subject_id, filename):
         os.makedirs(os.path.join(output_dir, str(subject_id)))
     filepath = os.path.join(os.path.join(os.path.join(output_dir, str(subject_id))), filename)
     nib.save(new_image, filepath)
-
-
-def train_test_split(dataset):
-    random.shuffle(dataset)
-
-    X_train = dataset[:-2]
-    X_valid = [dataset[-2]]
-    X_test = [dataset[-1]]
-
-    return X_train, X_valid, X_test
-
-
-def correct_class_ids(segmenation_volume):
-    # Transfer data from host to device.
-    mask_gpu = cp.asarray(segmenation_volume)
-
-    # Keep everything non-background.
-    mask_gpu[mask_gpu == 10] = 1
-    mask_gpu[mask_gpu == 150] = 2
-    mask_gpu[mask_gpu == 250] = 3
-
-    return mask_gpu.get()
 
 
 def generate_ROI(volume):

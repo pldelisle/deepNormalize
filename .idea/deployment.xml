@@ -5,7 +5,7 @@
       <paths name="Server-DeepNormalize">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/pierre-luc-delisle/Documents/deepNormalizeV3" local="$PROJECT_DIR$" />
+            <mapping deploy="/tmp/pycharm_project_146" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

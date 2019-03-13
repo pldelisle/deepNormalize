@@ -24,7 +24,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from skimage.segmentation import find_boundaries
 from scipy.ndimage.morphology import distance_transform_edt
-from DeepNormalize.utils.preprocessing import preprocess_images, get_patches
+from DeepNormalize.old.preprocessing import preprocess_images, get_patches
 import nibabel as nib
 import argparse
 import os

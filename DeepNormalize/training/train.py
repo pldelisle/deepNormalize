@@ -1,121 +1,85 @@
-import tensorflow as tf
-import time
-import logging
+import torch
 
-from DeepNormalize.layers.loss import tversky, dice_coefficient
-from DeepNormalize.io.data_provider import DataProvider
-from DeepNormalize.utils.utils import export_inputs
+from DeepNormalize.layers.tversky_loss import TverskyLoss
 
 
 class Trainer(object):
-
-    def __init__(self, network, args, config):
-        self.network = network
-        self.config = config
-        self.args = args
-        self.learning_rate_node = None
-
-    def _get_optimizer(self, training_iterations, global_step):
-        self.learning_rate_node = tf.train.exponential_decay(learning_rate=self.config.get("model")["learning_rate"],
-                                                             global_step=global_step,
-                                                             decay_steps=training_iterations,
-                                                             decay_rate=self.config.get("model")["learning_rate_decay"],
-                                                             staircase=True)
-        return tf.keras.optimizers.Adam(learning_rate=self.learning_rate_node)
-
-    def _get_generators(self):
-        # Instantiate both training and validation data sets.
-        dataset_train = DataProvider(self.args.data_dir, "train", self.config.get("inputs"))
-        dataset_validation = DataProvider(self.args.data_dir, "validation", self.config.get("inputs"))
-
-        # Define training and validation datasets with the same structure.
-        training_dataset = dataset_train.input()
-        validation_dataset = dataset_validation.input()
-
-        # A feedable iterator is defined by a handle placeholder and its structure. We
-        # could use the `output_types` and `output_shapes` properties of either
-        # `training_dataset` or `validation_dataset` here, because they have
-        # identical structure.
-        handle = tf.placeholder(tf.string, shape=[])
-        iterator = tf.data.Iterator.from_string_handle(
-            handle, training_dataset.output_types, training_dataset.output_shapes)
-        next_element = iterator.get_next()
-
-        # You can use feedable iterators with a variety of different kinds of iterator
-        # (such as one-shot and initializable iterators).
-        training_iterator = training_dataset.make_one_shot_iterator()
-        validation_iterator = validation_dataset.make_one_shot_iterator()
-
-        return training_iterator, validation_iterator, next_element, handle
+    def __init__(self, generator, discriminator, data_provider, config_generator, config_discriminator):
+        self._generator = generator
+        self._discriminator = discriminator
+        self._data_provider = data_provider
+        self._config_G = config_generator
+        self._config_D = config_discriminator
 
     def train(self):
-        training_iterator, validation_iterator, next_element, handle = self._get_generators()
+        training_dataloader, validation_dataloader = self._data_provider.get_data_loader()
 
-        # Session configuration.
-        sess_config = tf.ConfigProto(
-            allow_soft_placement=True,
-            log_device_placement=self.args.log_device_placement,
-            intra_op_parallelism_threads=self.args.num_intra_threads,
-            inter_op_parallelism_threads=self.args.num_inter_threads,
-            gpu_options=tf.GPUOptions(allow_growth=True,
-                                      force_gpu_compatible=True))
+        optimizer_G = torch.optim.Adam(self._generator.parameters(), self._config_G.get("learning_rate"))
 
-        sess = tf.Session(config=sess_config)
+        learning_rate_scheduler_G = torch.optim.lr_scheduler.MultiStepLR(optimizer_G,
+                                                                         milestones=[30, 60],
+                                                                         gamma=0.1)
 
-        # Declare a global step variable.
-        global_step = tf.Variable(0, trainable=False)
+        optimizer_D = torch.optim.Adam(self._discriminator.parameters(), self._config_D.get("learning_rate"))
 
-        # Write graph to a file.
-        if self.config.get("write_graph"):
-            tf.train.write_graph(sess.graph_def, self.args.job_dir, "graph.pb", False)
+        learning_rate_scheduler_D = torch.optim.lr_scheduler.MultiStepLR(optimizer_D,
+                                                                         milestones=[30, 60],
+                                                                         gamma=0.1)
 
-        # Initializer of all variables.
-        init_op = tf.group(tf.global_variables_initializer(),
-                           tf.local_variables_initializer())
+        segmentation_loss = TverskyLoss(alpha=self._config_G.get("alpha"),
+                                        beta=self._config_G.get("beta"),
+                                        eps=self._config_G.get("eps"),
+                                        n_classes=self._config_G.get("n_classes"))
 
-        # Launch initialization of all variables.
-        sess.run(init_op)
+        adversarial_loss = torch.nn.CrossEntropyLoss()
 
-        # The `Iterator.string_handle()` method returns a tensor that can be evaluated
-        # and used to feed the `handle` placeholder.
-        training_handle = sess.run(training_iterator.string_handle())
-        validation_handle = sess.run(validation_iterator.string_handle())
+        real_label = 1
+        fake_label = 0
 
-        if self.args.restore_dir is not "":
-            self.network.restore(sess, tf.train.latest_checkpoint(self.args.restore_dir))
+        for epoch in range(100):
 
-        loss = tversky(self.network.output, self.network.inputs[1], alpha=0.3, beta=0.7)
+            learning_rate_scheduler_G.step()
+            learning_rate_scheduler_D.step()
 
-        dice = dice_coefficient(self.network.out, self.network.y)
+            for i, (inputs, labels) in enumerate(training_dataloader):
 
-        optimizer = self._get_optimizer(100000, global_step).minimize(loss)
+                ############################
+                # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
+                ###########################
+                # Train with real.
 
-        logging.info("Starting training loop")
-        # Loop forever, alternating between training and validation.
-        while True:
-            # Run 200 steps using the training dataset. Note that the training dataset is
-            # infinite, and we resume from where we left off in the previous `while` loop
-            # iteration.
-            for _ in range(200):
-                start_time = time.time()
-                data = sess.run(next_element, feed_dict={handle: training_handle})
-                _, loss, dice, lr, gradients = sess.run((optimizer,
-                                                         loss,
-                                                         dice,
-                                                         self.learning_rate_node),
-                                                        feed_dict={self.network.inputs: data[0],
-                                                                   self.network.y: data[1]})
-                if self.config.get("export_inputs"):
-                    export_inputs(data)
-                end_time = time.time()
+                optimizer_D.zero_grad()
 
-                print("Training time " + str(end_time - start_time))
-                start_time = time.time()
-                validation_data = sess.run(next_element, feed_dict={handle: validation_handle})
-                end_time = time.time()
-                print("Validation time " + str(end_time - start_time))
+                real = inputs.float().cuda()
+                batch_size = real.size(0)
+                label = torch.full((batch_size, ), real_label, device="cuda")
 
-                # Run one pass over the validation dataset.
-                sess.run(validation_iterator.initializer)
-                for _ in range(50):
-                    sess.run(next_element, feed_dict={handle: validation_handle})
+                output = self._discriminator(real)
+                loss_D_real = adversarial_loss(output, label.long())
+                loss_D_real.backward(retain_graph=True)
+
+                # Train with generated samples.
+                fake_normalized, _ = self._generator(inputs.float().cuda())
+                label.fill_(fake_label)
+                output = self._discriminator(fake_normalized)
+                loss_D_fake = adversarial_loss(output, label.long())
+                loss_D_fake.backward(retain_graph=True)
+
+                error_D = loss_D_real + loss_D_fake
+
+                optimizer_D.step()
+
+                ############################
+                # (2) Update G network: maximize log(D(G(z)))
+                ###########################
+
+                optimizer_G.zero_grad()
+
+                _, output = self._generator(inputs.float().cuda())
+                loss_G = segmentation_loss(output, labels.float().cuda())
+
+                total_loss = error_D + loss_G
+
+                total_loss.backward()
+                optimizer_G.step()
+                print(total_loss.cpu().detach().numpy())

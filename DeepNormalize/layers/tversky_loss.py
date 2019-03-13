@@ -1,93 +1,90 @@
-import tensorflow as tf
+import torch
+import torch.nn as nn
+from torch.autograd import Function
 
 
-class TverskyLoss(object):
+class TverskyLoss(nn.Module):
 
-    def __init__(self, n_classes, alpha, beta):
-        self.n_classes = n_classes
+    def __init__(self, alpha, beta, eps, n_classes):
+        super(TverskyLoss, self).__init__()
         self.alpha = alpha
         self.beta = beta
+        self.eps = eps
+        self.n_classes = n_classes
 
-    def to_one_hot(self, ground_truth):
-        """
-           Converts ground truth labels to one-hot, sparse tensors.
-           Used extensively in segmentation losses.
+    def forward(self, y_pred, y_true):
+        one_hot = torch.tensor((), dtype=torch.float)
+        one_hot = one_hot.new_zeros(y_pred.shape, device="cuda")
+        one_hot.scatter_(1, y_true.long(), 1)
+        one_hot.cuda()
 
-           :param ground_truth: ground truth categorical labels (rank `N`)
-           :param num_classes: A scalar defining the depth of the one hot dimension
-               (see `depth` of `tf.one_hot`)
-           :return: one-hot sparse tf tensor
-               (rank `N+1`; new axis appended at the end)
-           """
-        # read input/output shapes
-        if isinstance(self.n_classes, tf.Tensor):
-            num_classes_tf = tf.to_int32(self.n_classes)
-        else:
-            num_classes_tf = tf.constant(self.n_classes, tf.int32)
-        input_shape = tf.shape(tf.squeeze(ground_truth, axis=1))
-        output_shape = tf.concat(
-            [input_shape, tf.reshape(num_classes_tf, (1,))], 0)
+        ones = torch.tensor((), dtype=torch.float)
+        ones = ones.new_ones(y_pred.shape, device="cuda")
 
-        if self.n_classes == 1:
-            return tf.reshape(ground_truth, output_shape)
+        # self.save_for_backward(y_pred, one_hot)
 
-        # squeeze the spatial shape
-        ground_truth = tf.reshape(ground_truth, (-1,))
-        # shape of squeezed output
-        dense_shape = tf.stack([tf.shape(ground_truth)[0], num_classes_tf], 0)
+        self.p0 = y_true
+        self.p1 = ones - y_pred
+        self.g0 = one_hot
+        self.g1 = ones - one_hot
 
-        # create a rank-2 sparse tensor
-        ground_truth = tf.to_int64(ground_truth)
-        ids = tf.range(tf.to_int64(dense_shape[0]), dtype=tf.int64)
-        ids = tf.stack([ids, ground_truth], axis=1)
-        one_hot = tf.SparseTensor(
-            indices=ids,
-            values=tf.ones_like(ground_truth, dtype=tf.float32),
-            dense_shape=tf.to_int64(dense_shape))
+        tp = torch.sum(self.p0 * self.g0)
+        fp = self.alpha * torch.sum(self.p0 * self.g1)
+        fn = self.beta * torch.sum(self.p1 * self.g0)
 
-        # resume the spatial dims
-        one_hot = tf.sparse_reshape(one_hot, output_shape)
-        return one_hot
-
-    def tversky(self, prediction, ground_truth, weight_map=None):
-        """
-          Function to calculate the Tversky loss for imbalanced data
-
-              Sadegh et al. (2017)
-
-              Tversky loss function for image segmentation
-              using 3D fully convolutional deep networks
-
-          :param prediction: the logits
-          :param ground_truth: the segmentation ground_truth
-          :param alpha: weight of false positives
-          :param beta: weight of false negatives
-          :param weight_map:
-          :return: the loss
-          """
-        prediction = tf.cast(prediction, tf.float32)
-        ground_truth = tf.cast(ground_truth, tf.int32)
-        one_hot = tf.one_hot(tf.squeeze(ground_truth, axis=1), depth=self.n_classes, axis=1)
-
-        p0 = prediction
-        p1 = 1 - prediction
-        g0 = one_hot
-        g1 = 1 - one_hot
-
-        if weight_map is not None:
-            num_classes = prediction.shape[1].value
-            weight_map_flattened = tf.reshape(weight_map, [-1])
-            weight_map_expanded = tf.expand_dims(weight_map_flattened, 1)
-            weight_map_nclasses = tf.tile(weight_map_expanded, [1, num_classes])
-        else:
-            weight_map_nclasses = 1
-
-        tp = tf.reduce_sum(weight_map_nclasses * p0 * g0)
-        fp = self.alpha * tf.reduce_sum(weight_map_nclasses * p0 * g1)
-        fn = self.beta * tf.reduce_sum(weight_map_nclasses * p1 * g0)
-
-        EPSILON = 0.00001
         numerator = tp
-        denominator = tp + fp + fn + EPSILON
-        score = numerator / denominator
-        return 1.0 - tf.reduce_mean(score)
+        denominator = tp + fp + fn + self.eps
+        score = torch.div(numerator, denominator)
+        return 1.0 - torch.sum(score)
+
+    # def backward(self, grad_output):
+    #
+    #     input, target = self.saved_variables
+    #     grad_input = grad_target = None
+    #
+    #     if self.needs_input_grad[0]:
+    #         grad_input = grad_output * self.beta * self.g1 * torch.sum(self.p0 * self.g0) \
+    #                      / torch.pow((torch.sum(self.p0 * self.g0) + self.alpha * torch.sum(self.p0 * self.g1) + self.beta * (self.p1 * self.g0)), 2)
+    #     if self.needs_input_grad[1]:
+    #         grad_target = None
+    #
+    #     return grad_input, grad_target
+
+
+class DiceLoss(Function):
+    """Dice coeff for individual examples"""
+
+    def forward(self, input, target):
+        self.save_for_backward(input, target)
+        eps = 0.0001
+        self.inter = torch.dot(input.view(-1), target.view(-1))
+        self.union = torch.sum(input) + torch.sum(target) + eps
+
+        t = (2 * self.inter.float() + eps) / self.union.float()
+        return t
+
+    # This function has only a single output, so it gets only one gradient
+    def backward(self, grad_output):
+
+        input, target = self.saved_variables
+        grad_input = grad_target = None
+
+        if self.needs_input_grad[0]:
+            grad_input = grad_output * 2 * (target * self.union - self.inter) \
+                         / (self.union * self.union)
+        if self.needs_input_grad[1]:
+            grad_target = None
+
+        return grad_input, grad_target
+
+    def dice_coeff(input, target):
+        """Dice coeff for batches"""
+        if input.is_cuda:
+            s = torch.FloatTensor(1).cuda().zero_()
+        else:
+            s = torch.FloatTensor(1).zero_()
+
+        for i, c in enumerate(zip(input, target)):
+            s = s + DiceLoss().forward(c[0], c[1])
+
+        return s / (i + 1)
