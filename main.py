@@ -39,6 +39,8 @@ from DeepNormalize.training.train import Trainer
 from DeepNormalize.model.DeepNormalize.deepNormalize import DeepNormalize
 from DeepNormalize.model.GAN.gan import Discriminator
 
+from DeepNormalize.utils.cuda import Cuda
+
 pv = sys.version_info
 print('Python version: {}.{}.{}'.format(pv.major, pv.minor, pv.micro))
 print('Numpy version: {}'.format(np.__version__))
@@ -47,32 +49,28 @@ print('Matplotlib version: {}'.format(mplver))
 
 
 def main(args, config):
-    # print(Cuda())
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available() and not args.cuda:
+        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-    generator = DeepNormalize(config=config.get("model").get("deep_normalize"))
-    torchsummary.summary(generator, input_size=(2, 64, 64, 64), device="cpu")
+    device = torch.device("cuda:0" if args.cuda else "cpu")
 
-    discriminator = Discriminator()
-    torchsummary.summary(discriminator, input_size=(2, 64, 64, 64), device="cpu")
+    torch.backends.cudnn.benchmark = True
 
-    if torch.cuda.device_count() > 1:
-        generator = generator.cuda()
-        discriminator = discriminator.cuda()
-        print("Let's use", torch.cuda.device_count(), "GPUs.")
-        generator = torch.nn.DataParallel(generator)
-        discriminator = torch.nn.DataParallel(discriminator)
-    else:
-        generator = generator.to(device).float()
-        discriminator = discriminator.to(device).float()
-        print("Training on single GPU or CPU.")
+    generator = DeepNormalize(config=config.get("model").get("deep_normalize"), n_gpus=args.n_gpus).to(device)
+    discriminator = Discriminator(config=config.get("model").get("resnet"), n_gpus=args.n_gpus).to(device)
+
+    if args.verbose:
+        print(Cuda())
+        torchsummary.summary(generator, input_size=(2, 64, 64, 64), device="cpu")
+        torchsummary.summary(discriminator, input_size=(2, 64, 64, 64), device="cpu")
 
     data_provider = DataProvider(config=config.get("inputs"))
     trainer = Trainer(generator,
                       discriminator,
                       data_provider,
                       config_generator=config.get("model").get("deep_normalize").get("training"),
-                      config_discriminator=config.get("model").get("resnet").get("training"))
+                      config_discriminator=config.get("model").get("resnet").get("training"),
+                      general_config=config.get("general"))
 
     trainer.train()
 
@@ -107,23 +105,15 @@ if __name__ == '__main__':
         default="0",
         help='The GPU ID on which to run the training.')
     parser.add_argument(
-        '--num-intra-threads',
-        type=int,
-        default=4,
-        help="""\
-      Number of threads to use for intra-op parallelism. When training on CPU
-      set to 0 to have the system pick the appropriate number or alternatively
-      set it to the number of physical CPU cores.\
-      """)
+        '--verbose',
+        type=bool,
+        default=False,
+        help='Whether to display model information or not.')
     parser.add_argument(
-        '--num-inter-threads',
-        type=int,
-        default=4,
-        help="""\
-      Number of threads to use for inter-op parallelism. If set to 0, the
-      system will pick an appropriate number.\
-      """)
-
+        '--cuda',
+        action='store_true',
+        default=True,
+        help='Enables NVIDIA CUDA')
     args = parser.parse_args()
 
     if args.n_gpus <= 1:
